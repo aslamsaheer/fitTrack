@@ -1,0 +1,54 @@
+<!doctype html><html><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827"><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css"><title>Fat Loss Coach V3</title>
+</head><body><div class="app">
+<header><div><small>PERSONAL FAT-LOSS COACH</small><h1 id="day">Day 0</h1></div><button class="round" onclick="modal('profile')">⚙️</button></header>
+<main>
+<section id="home" class="page active">
+<div class="hero"><div><small>TODAY'S MISSION</small><h2>Lose the belly.<br>Keep the muscle.</h2><p id="coach">Set your profile to begin.</p></div><div class="score"><b id="score">0</b><span>/100</span></div></div>
+<div class="sec"><h3>Body</h3><button onclick="go('progress')">Progress →</button></div><div class="three"><div><small>Weight</small><b id="hw">68.0</b><em>kg</em></div><div><small>Belly</small><b id="hb">97</b><em>cm</em></div><div><small>Waist</small><b id="hz">90</b><em>cm</em></div></div>
+<div class="sec"><h3>Today's targets</h3><button onclick="modal('profile')">Edit</button></div>
+<div class="card"><div class="line"><span>🔥 Calories</span><b><i id="cu">0</i> / <i id="ct">1700</i> kcal</b></div><div class="bar"><i id="cb"></i></div><div class="macros"><div>Protein<b id="ps">0 / 120 g</b></div><div>Fat<b id="fs">0 / 55 g</b></div><div>Carbs<b id="cs">0 / 185 g</b></div></div></div>
+<div class="sec"><h3>Quick actions</h3></div><div class="actions">
+<button onclick="go('food')">🍽️<b>Add meal</b><small>Log food</small></button><button onclick="plan() ">✨<b>What should I eat?</b><small>Use remaining macros</small></button>
+<button onclick="go('workout')">💪<b>Today's workout</b><small>Strength + core</small></button><button onclick="modal('weight')">⚖️<b>Log weight</b><small>Daily trend</small></button></div>
+<div class="sec"><h3>Activity</h3></div><div class="card"><div class="line"><span>🚶 Steps</span><b><span id="steps">0</span> / 7,000</b></div><input id="stepRange" type="range" min="0" max="15000" value="0" oninput="steps(this.value)"><div class="activity"><span>Walk <b id="walk">0 min</b></span><span>Cycle <b id="cy">0 min</b></span><span>Exercise <b id="burn">0 kcal</b></span></div></div>
+</section>
+
+<section id="food" class="page"><div class="title"><small>NUTRITION</small><h2>Fuel your day</h2></div>
+<div class="remaining"><small>REMAINING TODAY</small><b id="rem">1700 kcal</b><div><span id="rp">120 g protein</span><span id="rf">55 g fat</span></div></div>
+<div class="sec"><h3>Quick foods</h3></div><div class="foods" id="foods"></div>
+<div class="sec"><h3>Today's meals</h3><button onclick="clearToday()">Clear</button></div><div id="log" class="log"></div>
+<button class="primary" onclick="modal('custom')">＋ Add custom food</button>
+<div class="planner"><small>SMART MEAL PLANNER</small><h3 id="pt">Log a meal first</h3><p id="px">The planner uses your remaining calories, protein and fat.</p><button class="secondary" onclick="plan()">Generate recommendation</button></div>
+</section>
+
+<section id="workout" class="page"><div class="title"><small>TRAINING</small><h2>Day 0 assessment</h2></div>
+<div class="notice">Do the baseline once with clean form. Repeat the same protocol on Day 30/60/90.</div><div id="tests" class="tests"></div><button class="primary" onclick="saveTests()">Save baseline</button>
+<div class="sec"><h3>Today's workout</h3></div><div class="card workout"><b>Starter session</b><br>Pull-ups: 4 × 5–6<br>Push-ups: 4 × 8–10<br>Ab roller: 3 × 2–3<br>Plank: 3 × 30–45 sec<br>Brisk walk: 30 min<br><br><label>Workout minutes <input id="wm" type="number" value="25"></label><label>Estimated burn <input id="wb" type="number" value="150"></label><button class="secondary" onclick="completeWorkout()">✓ Complete workout</button></div>
+</section>
+
+<section id="progress" class="page"><div class="title"><small>PROGRESS</small><h2>Your transformation</h2></div>
+<div class="goal"><small>PRIMARY GOAL</small><h3>Reduce abdominal fat while keeping strength.</h3><div class="goalgrid"><div>Weight<b>68 kg</b></div><div>Belly<b>97 cm</b></div><div>Biceps<b>30 cm</b></div><div>Pull-ups<b id="pb">10</b></div></div></div>
+<div class="sec"><h3>7-day nutrition</h3><button onclick="week()">Analyze week</button></div><div class="chart" id="nutritionChart">Log daily data to see your chart.</div>
+<div class="sec"><h3>Activity & exercise burn</h3></div><div class="chart" id="activityChart">Exercise calories will appear here.</div>
+<div class="sec"><h3>Weight trend</h3></div><div class="chart" id="weightChart">Daily weights will appear here.</div>
+<div class="sec"><h3>Body measurements</h3><button onclick="modal('measure')">＋ Add</button></div><div class="card" id="measurements"></div>
+<div class="sec"><h3>Weekly analysis</h3></div><div class="analysis" id="analysis">Complete at least 7 days for the first full analysis.</div>
+</section>
+
+<section id="more" class="page"><div class="title"><small>SETUP</small><h2>Your plan</h2></div><div class="settings">
+<button onclick="modal('profile')">👤 <b>Profile & targets</b><small id="summary">Age 29 · Lightly active</small></button>
+<button onclick="modal('foodsModal')">🥜 <b>My foods & snacks</b><small>Peanuts, pumpkin seeds, eggs, etc.</small></button>
+<button onclick="modal('recipe')">🥘 <b>My recipes</b><small>Track coconut oil & cow ghee</small></button>
+<button onclick="resetApp()">♻️ <b>Reset</b><small>Clear local demo data</small></button></div></section>
+</main>
+<nav><button data-p="home" class="active" onclick="go('home')">⌂<small>Home</small></button><button data-p="food" onclick="go('food')">🍽<small>Food</small></button><button data-p="workout" onclick="go('workout')">💪<small>Workout</small></button><button data-p="progress" onclick="go('progress')">📈<small>Progress</small></button><button data-p="more" onclick="go('more')">☰<small>More</small></button></nav></div>
+
+<div class="modal" id="profile"><div class="box"><button class="x" onclick="closeM()">×</button><h2>Profile & targets</h2><label>Age<input id="age" type="number" value="29"></label><label>Activity<select id="activity"><option value="1.2">Mostly sitting</option><option value="1.35" selected>Lightly active</option><option value="1.5">Quite active</option><option value="1.7">Very active</option></select></label><label>Deficit<select id="deficit"><option value="300">300 kcal</option><option value="400" selected>400 kcal</option><option value="500">500 kcal</option></select></label><button class="primary" onclick="saveProfile()">Calculate & save</button><div id="targetInfo"></div></div></div>
+<div class="modal" id="custom"><div class="box"><button class="x" onclick="closeM()">×</button><h2>Custom food</h2><label>Name<input id="fn"></label><label>Calories<input id="fc" type="number"></label><label>Protein g<input id="fp" type="number"></label><label>Fat g<input id="ff" type="number"></label><label>Carbs g<input id="fcarb" type="number"></label><button class="primary" onclick="customFood()">Add & log</button></div></div>
+<div class="modal" id="weight"><div class="box"><button class="x" onclick="closeM()">×</button><h2>Log today's weight</h2><label>Weight kg<input id="nw" type="number" step=".1" value="68"></label><button class="primary" onclick="saveWeight()">Save</button></div></div>
+<div class="modal" id="measure"><div class="box"><button class="x" onclick="closeM()">×</button><h2>Weekly measurements</h2><label>Weight kg<input id="mw" type="number" step=".1" value="68"></label><label>Belly cm<input id="mb" type="number" step=".1" value="97"></label><label>Under-waist cm<input id="mz" type="number" step=".1" value="90"></label><label>Chest cm<input id="mc" type="number" step=".1" value="100"></label><label>Biceps cm<input id="marm" type="number" step=".1" value="30"></label><button class="primary" onclick="saveMeasure()">Save</button></div></div>
+<div class="modal" id="foodsModal"><div class="box"><button class="x" onclick="closeM()">×</button><h2>My available foods</h2><div id="checks"></div><button class="primary" onclick="closeM()">Save</button></div></div>
+<div class="modal" id="recipe"><div class="box"><button class="x" onclick="closeM()">×</button><h2>My recipes</h2><p>Recipe layer: add ingredients, grams of coconut oil/cow ghee, cooked weight, then calculate nutrition per 100 g.</p><div class="recipe">Example: Chicken curry → chicken + coconut oil + onion + spices → cooked weight → kcal/protein/fat per 100 g.</div></div></div>
+<div id="toast" class="toast"></div><script src="app.js"></script></body></html>
