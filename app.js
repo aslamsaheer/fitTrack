@@ -371,15 +371,7 @@ function renderWorkout(){
  workoutWindowTitle.textContent='Smart daily schedule';
  workoutWindowText.textContent='Recommended exercises are highlighted and sorted to the top. Cycling is logged in minutes at medium intensity.';
 }
-function saveActivity(){day.cycle=day.workout.cycle||0;day.burn=Math.max(0,+dom("burnInput").value||0);saveLocal();upsertDaily();render();toast('Activity saved')}
-async function saveWeight(){const w=+newWeight.value||0;if(!w)return;day.weight=w;saveLocal();await upsertDaily();if(user)await sb.from('body_measurements').insert({user_id:user.id,profile_id:activeProfile.id,date:day.date,weight_kg:w});closeModals();render();toast('Weight saved')}
-async function saveMeasurement(){const x={weight_kg:+measureWeight.value,belly_cm:+measureBelly.value,waist_cm:+measureWaist.value,chest_cm:+measureChest.value,biceps_cm:+measureBiceps.value};if(user)await sb.from('body_measurements').insert({user_id:user.id,profile_id:activeProfile.id,date:today(),...x});day.weight=x.weight_kg;await upsertDaily();closeModals();render();toast('Measurements saved')}
-function simpleChart(el,vals,label,target=0){
- if(!vals.length){el.textContent='Keep logging daily data.';return}
- const max=Math.max(target,...vals,1),min=Math.min(0,...vals),w=460,h=120,p=12;
- const pts=vals.map((v,i)=>`${p+i*(w-2*p)/Math.max(1,vals.length-1)},${h-p-(v-min)/(max-min)*(h-2*p)}`).join(' ');
- el.innerHTML=`<div style="font-size:10px;color:#6b7280">${label}</div><svg viewBox="0 0 ${w} ${h}" width="100%" height="125"><polyline points="${pts}" fill="none" stroke="#111827" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${target?`<line x1="${p}" x2="${w-p}" y1="${h-p-(target-min)/(max-min)*(h-2*p)}" y2="${h-p-(target-min)/(max-min)*(h-2*p)}" stroke="#9ca3af" stroke-dasharray="5 5"/>`:''}</svg><small>${vals.map(v=>Math.round(v)).join(' · ')}</small>`;
-}
+
 async function refreshHistory(){
  if(user){const {data}=await sb.from('daily_logs').select('*').eq('profile_id',activeProfile.id).order('date');dailyHistory=(data||[]).map(x=>({date:x.date,cal:x.calories||0,p:x.protein||0,f:x.fat||0,c:x.carbs||0,burn:x.exercise_calories||0,steps:x.steps||0,weight:x.weight_kg}))}
 }
