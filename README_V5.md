@@ -19,3 +19,7 @@ Each named profile gets its own:
 - start date and targets
 
 Profiles are stored in `app_profiles` and data rows reference `profile_id`.
+
+
+## V5.1
+The website is aligned with the actual existing schema: `daily_logs.log_date`, `meals.daily_log_id`, `foods` nutrient columns, and `body_measurements.measure_date`. The V5 migration has already been run successfully; do not rerun it.
