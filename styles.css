@@ -70,3 +70,5 @@
 .burn-foot{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:#8b95a3}
 .burn-foot b{color:#374151}
 @media(max-width:360px){.burn-head strong{font-size:24px}.burn-remaining{font-size:11px;padding:7px 8px}}
+
+.profile-empty{padding:12px 14px;border:1px dashed rgba(148,163,184,.35);border-radius:16px;color:#94a3b8;font-size:12px;text-align:center}.profile-gate .profile-empty{color:#b6c7d9;border-color:rgba(255,255,255,.14)}

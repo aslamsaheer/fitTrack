@@ -43,3 +43,6 @@ Fixed the meal persistence path and added explicit Supabase save/update errors a
 
 ## V5.7
 Removed the obsolete Activity Windows / Save Activity section. Added estimated exercise calorie burn and remaining-target progress at the top of Workout. No database migration required.
+
+## V5.8
+Profile selection persistence fix. Existing named profiles are cached locally after they are loaded/created, so the profile gate can still show the user's profiles if the anonymous Supabase session is temporarily unavailable. No database migration required.
