@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#111827">
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="styles.css">
-<title>Fat Loss Coach · v5.1</title>
+<title>Fat Loss Coach · v5.2</title>
 </head>
 <body>
 <div class="app">
@@ -79,7 +79,7 @@
 
 <section id="more" class="page">
   <div class="title"><small>SETUP</small><h2>Your plan</h2></div>
-  <div class="versionCard"><span>Fat Loss Coach</span><b>v5.1</b><small>Supabase · Mobile App</small></div>
+  <div class="versionCard"><span>Fat Loss Coach</span><b>v5.2</b><small>Supabase · Mobile App</small></div>
   <div class="settings">
     <button onclick="openProfileManager()">👤 <b>Profiles</b><small id="profileSummary">Manage family profiles</small></button>
     <button onclick="openModal('profileModal')">🎯 <b>Profile & targets</b><small id="profileTargetSummary">Set your targets</small></button>
@@ -121,27 +121,68 @@
 </div>
 
 <div class="modal" id="createProfileModal">
-  <div class="profile-box">
+  <div class="profile-box profile-create-box">
     <button class="x" onclick="closeModals()">×</button>
-    <div class="create-avatar" id="newAvatarPreview">👤</div>
-    <div class="eyebrow">CREATE YOUR PROFILE</div>
-    <h2>Let's get you started</h2>
-    <label>Your name<input id="profileName" maxlength="30" placeholder="e.g. Aslam"></label>
-    <label>Choose avatar
-      <div class="avatarChoices" id="avatarChoices">
-        <button type="button" onclick="pickAvatar('👨🏻')">👨🏻</button>
-        <button type="button" onclick="pickAvatar('👩🏻')">👩🏻</button>
-        <button type="button" onclick="pickAvatar('👦🏻')">👦🏻</button>
-        <button type="button" onclick="pickAvatar('👧🏻')">👧🏻</button>
-        <button type="button" onclick="pickAvatar('🧔🏻')">🧔🏻</button>
-        <button type="button" onclick="pickAvatar('👵🏻')">👵🏻</button>
+    <div class="profile-hero">
+      <div class="create-avatar" id="newAvatarPreview">👨🏻</div>
+      <div>
+        <div class="eyebrow">CREATE YOUR PROFILE</div>
+        <h2>Let's get you started</h2>
+        <p>Personalize your journey. Your data stays private and separate.</p>
       </div>
-    </label>
-    <label>Age<input id="newAge" type="number" value="29"></label>
-    <label>Height cm<input id="newHeight" type="number" value="159"></label>
-    <label>Starting weight kg<input id="newWeightProfile" type="number" step=".1" value="68"></label>
-    <button class="gradient-btn" onclick="createNamedProfile()">Create Profile →</button>
+    </div>
+
+    <div class="profile-form-section">
+      <label class="field-label">Your name
+        <div class="input-icon-wrap"><span>♙</span><input id="profileName" maxlength="30" placeholder="e.g. John" autocomplete="name"></div>
+      </label>
+
+      <div class="field-label">Choose avatar
+        <div class="avatarChoices" id="avatarChoices">
+          <button type="button" onclick="pickAvatar('👨🏻')">👨🏻</button>
+          <button type="button" onclick="pickAvatar('👩🏻')">👩🏻</button>
+          <button type="button" onclick="pickAvatar('👦🏻')">👦🏻</button>
+          <button type="button" onclick="pickAvatar('👧🏻')">👧🏻</button>
+          <button type="button" onclick="pickAvatar('🧔🏻')">🧔🏻</button>
+          <button type="button" onclick="pickAvatar('👵🏻')">👵🏻</button>
+        </div>
+      </div>
+
+      <div class="profile-grid-3">
+        <label class="field-label">Age
+          <div class="unit-input"><input id="newAge" type="number" min="1" max="120" placeholder="e.g. 29"><span>years</span></div>
+        </label>
+        <label class="field-label">Height
+          <div class="unit-input"><input id="newHeight" type="number" min="50" max="250" placeholder="e.g. 159"><span>cm</span></div>
+        </label>
+        <label class="field-label">Starting weight
+          <div class="unit-input"><input id="newWeightProfile" type="number" min="20" max="300" step=".1" placeholder="e.g. 68"><span>kg</span></div>
+        </label>
+      </div>
+
+      <div class="optional-measure-head">
+        <div><strong>Starting body measurements</strong><small>Optional · you can add these later</small></div>
+        <span>cm</span>
+      </div>
+      <div class="profile-measure-grid">
+        <label class="field-label">Waist
+          <div class="unit-input"><input id="newWaist" type="number" min="20" max="200" step=".1" placeholder="e.g. 90"><span>cm</span></div>
+        </label>
+        <label class="field-label">Belly
+          <div class="unit-input"><input id="newBelly" type="number" min="20" max="200" step=".1" placeholder="e.g. 97"><span>cm</span></div>
+        </label>
+        <label class="field-label">Chest
+          <div class="unit-input"><input id="newChest" type="number" min="20" max="200" step=".1" placeholder="e.g. 100"><span>cm</span></div>
+        </label>
+        <label class="field-label">Biceps
+          <div class="unit-input"><input id="newBiceps" type="number" min="10" max="100" step=".1" placeholder="e.g. 30"><span>cm</span></div>
+        </label>
+      </div>
+    </div>
+
+    <button class="gradient-btn" onclick="createNamedProfile()">Create Profile <span>→</span></button>
     <button class="text-btn" onclick="closeModals()">Cancel</button>
+    <div class="profile-privacy">🔒 Your data is private and secure.</div>
   </div>
 </div>
 

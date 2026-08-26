@@ -138,8 +138,8 @@ function showProfileGate(){
 function hideProfileGate(){const gate=document.getElementById('profileGate');if(gate)gate.classList.remove('show')}
 function showCreateProfile(){
  closeModals();document.getElementById('createProfileModal').classList.add('show');
- const btn=document.querySelector('#createProfileModal .gradient-btn');if(btn){btn.textContent='Create Profile →';btn.onclick=createNamedProfile;}
- document.getElementById('profileName').value='';selectedAvatar='👨🏻';pickAvatar(selectedAvatar);
+ const btn=document.querySelector('#createProfileModal .gradient-btn');if(btn){btn.innerHTML='Create Profile <span>→</span>';btn.onclick=createNamedProfile;}
+ resetCreateProfileForm();
 }
 function pickAvatar(a){selectedAvatar=a;const p=document.getElementById('newAvatarPreview');if(p)p.textContent=a;document.querySelectorAll('.avatarChoices button').forEach(b=>b.classList.toggle('selected',b.textContent===a))}
 async function loadNamedProfiles(){
@@ -154,20 +154,33 @@ function renderProfileCards(containerId,gate=false){
  const box=document.getElementById(containerId);if(!box)return;
  box.innerHTML=profilesList.map(p=>`<div class="profile-card-wrap"><button class="profile-card ${activeProfile?.id===p.id?'active':''}" onclick="switchProfile('${p.id}')"><span class="avatar">${p.avatar||'👤'}</span><span class="pcopy"><strong>${escapeHtml(p.name)}</strong><small>${p.starting_weight_kg||'—'} kg · ${activeProfile?.id===p.id?'Active profile':'Tap to switch'}</small></span><span class="chev">›</span></button><button class="profile-edit-btn" onclick="event.stopPropagation();editProfile('${p.id}')">✎</button></div>`).join('');
 }
+function profileNumber(id){
+ const v=document.getElementById(id)?.value.trim();
+ return v===''?null:+v;
+}
+function resetCreateProfileForm(){
+ document.getElementById('profileName').value='';
+ ['newAge','newHeight','newWeightProfile','newWaist','newBelly','newChest','newBiceps'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+ selectedAvatar='👨🏻';pickAvatar(selectedAvatar);
+}
 async function createNamedProfile(){
  const name=document.getElementById('profileName').value.trim();
- if(!name){toast('Enter a name');return}
+ const age=profileNumber('newAge'), height=profileNumber('newHeight'), weight=profileNumber('newWeightProfile');
+ if(!name){toast('Enter your name');return}
+ if(age===null||height===null||weight===null){toast('Enter age, height and starting weight');return}
  if(!user){toast('Cloud connection unavailable');return}
- const age=+document.getElementById('newAge').value||29;
- const height=+document.getElementById('newHeight').value||159;
- const weight=+document.getElementById('newWeightProfile').value||68;
  const id=crypto.randomUUID();
- const row={id,owner_id:user.id,name,avatar:selectedAvatar,age,height_cm:height,starting_weight_kg:weight,start_date:today(),calorie_target:1700,protein_target:120,fat_target:55,carb_target:185};
+ const waist=profileNumber('newWaist'), belly=profileNumber('newBelly'), chest=profileNumber('newChest'), biceps=profileNumber('newBiceps');
+ const row={id,owner_id:user.id,name,avatar:selectedAvatar,age,height_cm:height,starting_weight_kg:weight,start_date:today(),calorie_target:1700,protein_target:120,fat_target:55,carb_target:185,starting_waist_cm:waist,starting_belly_cm:belly,starting_chest_cm:chest,starting_biceps_cm:biceps};
  const {data,error}=await sb.from('app_profiles').insert(row).select().single();
  if(error){toast(error.message);return}
  profilesList.push(data);activeProfile=data;localStorage.setItem('flc_active_profile',data.id);
  profile={...profile,age,height,weight,targets:{cal:1700,p:120,f:55,c:185}};
  startDate=today();selectedDate=today();day={date:selectedDate,cal:0,p:0,f:0,c:0,steps:0,cycle:0,burn:0,workout:{}};meals=[];dailyHistory=[];
+ // Save optional starting measurements as the first measurement record.
+ if(waist!==null||belly!==null||chest!==null||biceps!==null){
+   await sb.from('body_measurements').insert({user_id:user.id,profile_id:id,measure_date:today(),weight_kg:weight,waist_cm:waist,belly_cm:belly,chest_cm:chest,biceps_cm:biceps});
+ }
  saveLocal();document.getElementById('createProfileModal').classList.remove('show');hideProfileGate();
  await loadCloud();render();toast('Welcome, '+name+' 🎉');
 }
@@ -184,24 +197,31 @@ function openProfileManager(){closeModals();renderProfileCards('managerProfiles'
 function editProfile(id){
  const p=profilesList.find(x=>x.id===id);if(!p)return;
  document.getElementById('profileName').value=p.name||'';
- document.getElementById('newAge').value=p.age||29;
- document.getElementById('newHeight').value=p.height_cm||159;
- document.getElementById('newWeightProfile').value=p.starting_weight_kg||68;
- pickAvatar(p.avatar||'👤');
+ document.getElementById('newAge').value=p.age??'';
+ document.getElementById('newHeight').value=p.height_cm??'';
+ document.getElementById('newWeightProfile').value=p.starting_weight_kg??'';
+ document.getElementById('newWaist').value=p.starting_waist_cm??'';
+ document.getElementById('newBelly').value=p.starting_belly_cm??'';
+ document.getElementById('newChest').value=p.starting_chest_cm??'';
+ document.getElementById('newBiceps').value=p.starting_biceps_cm??'';
+ pickAvatar(p.avatar||'👨🏻');
  document.getElementById('createProfileModal').classList.add('show');
  const btn=document.querySelector('#createProfileModal .gradient-btn');
- if(btn){btn.textContent='Save Profile';btn.onclick=()=>saveEditedProfile(id);}
+ if(btn){btn.innerHTML='Save Profile <span>✓</span>';btn.onclick=()=>saveEditedProfile(id);}
 }
 async function saveEditedProfile(id){
  const p=profilesList.find(x=>x.id===id);if(!p)return;
- const name=document.getElementById('profileName').value.trim();if(!name){toast('Enter a name');return}
- const row={name,avatar:selectedAvatar,age:+document.getElementById('newAge').value||29,height_cm:+document.getElementById('newHeight').value||159,starting_weight_kg:+document.getElementById('newWeightProfile').value||68};
+ const name=document.getElementById('profileName').value.trim();
+ const age=profileNumber('newAge'),height=profileNumber('newHeight'),weight=profileNumber('newWeightProfile');
+ if(!name){toast('Enter your name');return}
+ if(age===null||height===null||weight===null){toast('Enter age, height and starting weight');return}
+ const row={name,avatar:selectedAvatar,age,height_cm:height,starting_weight_kg:weight,starting_waist_cm:profileNumber('newWaist'),starting_belly_cm:profileNumber('newBelly'),starting_chest_cm:profileNumber('newChest'),starting_biceps_cm:profileNumber('newBiceps')};
  const {data,error}=await sb.from('app_profiles').update(row).eq('id',id).select().single();
  if(error){toast(error.message);return}
  profilesList=profilesList.map(x=>x.id===id?data:x);
  if(activeProfile?.id===id){activeProfile=data;profile.age=data.age;profile.height=data.height_cm;profile.weight=data.starting_weight_kg}
  document.getElementById('createProfileModal').classList.remove('show');
- const btn=document.querySelector('#createProfileModal .gradient-btn');if(btn){btn.textContent='Create Profile →';btn.onclick=createNamedProfile}
+ const btn=document.querySelector('#createProfileModal .gradient-btn');if(btn){btn.innerHTML='Create Profile <span>→</span>';btn.onclick=createNamedProfile}
  renderProfileCards('managerProfiles');render();toast('Profile updated');
 }
 async function deleteCurrentProfile(){

@@ -23,3 +23,7 @@ Profiles are stored in `app_profiles` and data rows reference `profile_id`.
 
 ## V5.1
 The website is aligned with the actual existing schema: `daily_logs.log_date`, `meals.daily_log_id`, `foods` nutrient columns, and `body_measurements.measure_date`. The V5 migration has already been run successfully; do not rerun it.
+
+
+## V5.2
+Run `supabase_v5_2_migration.sql` once. It adds optional starting waist, belly, chest and biceps columns to `app_profiles`.
