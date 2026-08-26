@@ -107,13 +107,25 @@ async function loadSelectedDateValue(date){
  selectedDate=date;day.date=date;saveLocal();render();toast('Opened '+formatDate(date));
 }
 async function loadCloudDay(date){
- if(!user)return;
- const {data:dl}=await sb.from('daily_logs').select('*').eq('profile_id',activeProfile.id).eq('date',date).maybeSingle();
- day=dl?{date,cal:dl.calories||0,p:dl.protein||0,f:dl.fat||0,c:dl.carbs||0,steps:dl.steps||0,cycle:dl.cycling_minutes||0,burn:dl.exercise_calories||0,workout:{}}:{date,cal:0,p:0,f:0,c:0,steps:0,cycle:0,burn:0,workout:{}};
- const {data:ml}=await sb.from('meals').select('*').eq('profile_id',activeProfile.id).eq('date',date).order('created_at');
- meals=(ml||[]).map(x=>({id:x.id,name:x.food_name,qty:x.quantity,unit:x.unit,cal:x.calories||0,p:x.protein||0,f:x.fat||0,c:x.carbs||0,foodKey:x.food_key||''}));
+ if(!user||!activeProfile)return;
+ const {data:dl,error:de}=await sb.from('daily_logs').select('*').eq('profile_id',activeProfile.id).eq('log_date',date).maybeSingle();
+ if(de) console.warn('daily log load failed',de);
+ const workout=dl?.workout_data||{};
+ day=dl?{id:dl.id,date,cal:dl.calories||0,p:dl.protein||0,f:dl.fat||0,c:dl.carbs||0,steps:dl.steps||0,cycle:dl.cycling_minutes||0,burn:dl.exercise_calories||0,workout,weight:dl.weight_kg||0}:{date,cal:0,p:0,f:0,c:0,steps:0,cycle:0,burn:0,workout:{},weight:0};
+ if(dl){
+   const {data:ml,error:me}=await sb.from('meals').select('*').eq('profile_id',activeProfile.id).eq('daily_log_id',dl.id).order('created_at');
+   if(me) console.warn('meal load failed',me);
+   const grouped={};
+   (ml||[]).forEach(x=>{
+     const foodKey=x.food_key||x.food_name, key=foodKey+'|'+x.unit;
+     if(!grouped[key]) grouped[key]={id:x.id,name:x.food_name,qty:+x.quantity||0,unit:x.unit,cal:+x.calories||0,p:+x.protein||0,f:+x.fat||0,c:+x.carbs||0,foodKey};
+     else {
+       const g=grouped[key];g.qty+=(+x.quantity||0);g.cal+=(+x.calories||0);g.p+=(+x.protein||0);g.f+=(+x.fat||0);g.c+=(+x.carbs||0);g.id=null;
+     }
+   });
+   meals=Object.values(grouped);
+ } else meals=[];
 }
-
 let profilesList=[];
 let activeProfile=null;
 let selectedAvatar='👨🏻';
@@ -244,19 +256,40 @@ async function loadCloud(){
  const p=activeProfile;
  startDate=p.start_date||startDate;
  profile={...profile,age:p.age||29,height:p.height_cm||159,weight:p.starting_weight_kg||68,activity:1.35,targets:{cal:p.calorie_target||1700,p:p.protein_target||120,f:p.fat_target||55,c:p.carb_target||185}};
-
- const {data:logs}=await sb.from('daily_logs').select('*').eq('profile_id',activeProfile.id).order('date');
- dailyHistory=(logs||[]).map(x=>({date:x.date,cal:x.calories||0,p:x.protein||0,f:x.fat||0,c:x.carbs||0,burn:x.exercise_calories||0,steps:x.steps||0,weight:x.weight_kg}));
+ const {data:logs,error:le}=await sb.from('daily_logs').select('*').eq('profile_id',activeProfile.id).order('log_date');
+ if(le) console.warn('history load failed',le);
+ dailyHistory=(logs||[]).map(x=>({date:x.log_date,cal:x.calories||0,p:x.protein||0,f:x.fat||0,c:x.carbs||0,burn:x.exercise_calories||0,steps:x.steps||0,weight:x.weight_kg}));
  await loadCloudDay(selectedDate);
- const {data:foods}=await sb.from('foods').select('*').eq('profile_id',activeProfile.id).order('name');
- savedFoods=foods||[];
+ const {data:foods,error:fe}=await sb.from('foods').select('*').eq('profile_id',activeProfile.id).order('name');
+ if(fe) console.warn('saved foods load failed',fe);
+ savedFoods=(foods||[]).map(x=>({id:x.id,food_key:'saved_'+x.id,name:x.name,serving_size:x.serving_size||'100 g',calories_100g:+x.calories||0,protein_100g:+x.protein||0,fat_100g:+x.fat||0,carbs_100g:+x.carbs||0,unit:'100g'}));
 }
 async function upsertDaily(){
- if(!user){saveLocal();return}
- await sb.from('daily_logs').upsert({user_id:user.id,profile_id:activeProfile.id,date:day.date,calories:day.cal,protein:day.p,fat:day.f,carbs:day.c,exercise_calories:day.burn,steps:day.steps,walking_minutes:Math.round(day.steps/100),cycling_minutes:day.cycle,workout_completed:Object.keys(day.workout).length>0},{onConflict:'profile_id,date'});
+ if(!user||!activeProfile){saveLocal();return null}
+ const payload={
+   user_id:user.id,profile_id:activeProfile.id,log_date:day.date,
+   day_number:dayNumber(day.date),calories:Math.round(day.cal),protein:day.p,fat:day.f,carbs:day.c,
+   exercise_calories:Math.round(day.burn||0),steps:Math.round(day.steps||0),
+   walking_minutes:Math.round((day.steps||0)/100),cycling_minutes:Math.round(day.cycle||0),
+   workout_completed:Object.values(day.workout||{}).some(v=>v>0),
+   weight_kg:day.weight||null,workout_data:day.workout||{}
+ };
+ const {data,error}=await sb.from('daily_logs').upsert(payload,{onConflict:'profile_id,log_date'}).select().single();
+ if(error){console.error('daily save failed',error);toast('Cloud save failed — check connection');return null}
+ day.id=data.id;return data.id;
 }
 async function saveMealCloud(m){
- if(user) await sb.from('meals').insert({user_id:user.id,profile_id:activeProfile.id,date:day.date,food_key:m.foodKey||'',food_name:m.name,quantity:m.qty,unit:m.unit,calories:m.calories,protein:m.p,fat:m.f,carbs:m.c});
+ if(!user||!activeProfile)return;
+ const logId=await upsertDaily();if(!logId)return;
+ const row={user_id:user.id,profile_id:activeProfile.id,daily_log_id:logId,meal_type:mealTypeForNow(),food_key:m.foodKey||m.name,food_name:m.name,quantity:m.qty,unit:m.unit,calories:m.cal||0,protein:m.p||0,fat:m.f||0,carbs:m.c||0};
+ const {data,error}=await sb.from('meals').insert(row).select().single();
+ if(error){console.error('meal save failed',error);toast('Meal cloud save failed')}
+ else if(m.id==null)m.id=data.id;
+ return data;
+}
+function mealTypeForNow(){
+ const h=new Date().getHours();
+ return h<11?'breakfast':h<15?'lunch':h<19?'snack':'dinner';
 }
 function calcTarget(){
  const bmr=10*profile.weight+6.25*profile.height-5*profile.age+5;
@@ -271,15 +304,41 @@ async function saveProfile(silent=false){
 }
 function setSteps(v){day.steps=+v;saveLocal();render();upsertDaily()}
 function foodByKey(k){return FOOD.find(x=>x[0]===k)||savedFoods.find(x=>x.food_key===k)}
-function addFood(food,qty=1,unit='count'){
- const factor=qty;
- const m={foodKey:food[0]||food.food_key,name:food[1]||food.name,qty,unit,cal:(food[2]||food.calories_100g)*factor,p:(food[3]||food.protein_100g)*factor,f:(food[4]||food.fat_100g)*factor,c:(food[5]||food.carbs_100g)*factor};
- // For count foods values are per item/serving; weight foods use qty grams / 100.
- if(food[6]==='weight'||food.unit==='100g'){m.cal=(food[2]||food.calories_100g)*qty/100;m.p=(food[3]||food.protein_100g)*qty/100;m.f=(food[4]||food.fat_100g)*qty/100;m.c=(food[5]||food.carbs_100g)*qty/100;m.unit='g'}
+async function addFood(food,qty=1,unit='count'){
+ const isWeight=food[6]==='weight'||food.unit==='100g';
+ const m={foodKey:food[0]||food.food_key,name:food[1]||food.name,qty:+qty||1,unit:isWeight?'g':unit,
+   cal:0,p:0,f:0,c:0};
+ if(isWeight){
+   m.cal=(food[2]??food.calories_100g??0)*m.qty/100;
+   m.p=(food[3]??food.protein_100g??0)*m.qty/100;
+   m.f=(food[4]??food.fat_100g??0)*m.qty/100;
+   m.c=(food[5]??food.carbs_100g??0)*m.qty/100;
+ }else{
+   m.cal=(food[2]??food.calories_100g??0)*m.qty;
+   m.p=(food[3]??food.protein_100g??0)*m.qty;
+   m.f=(food[4]??food.fat_100g??0)*m.qty;
+   m.c=(food[5]??food.carbs_100g??0)*m.qty;
+ }
  const existing=meals.find(x=>x.foodKey===m.foodKey&&x.unit===m.unit);
- if(existing){existing.qty+=m.qty;existing.cal+=m.cal;existing.p+=m.p;existing.f+=m.f;existing.c+=m.c}else meals.push(m);
- day.cal=meals.reduce((a,x)=>a+x.cal,0);day.p=meals.reduce((a,x)=>a+x.p,0);day.f=meals.reduce((a,x)=>a+x.f,0);day.c=meals.reduce((a,x)=>a+x.c,0);
- saveLocal();upsertDaily();saveMealCloud(m);render();toast(m.name+' added');
+ if(existing){
+   existing.qty+=m.qty;existing.cal+=m.cal;existing.p+=m.p;existing.f+=m.f;existing.c+=m.c;
+   day.cal=meals.reduce((a,x)=>a+x.cal,0);day.p=meals.reduce((a,x)=>a+x.p,0);day.f=meals.reduce((a,x)=>a+x.f,0);day.c=meals.reduce((a,x)=>a+x.c,0);
+   saveLocal();render();
+   if(user&&activeProfile&&existing.id){
+     const {error}=await sb.from('meals').update({quantity:existing.qty,calories:existing.cal,protein:existing.p,fat:existing.f,carbs:existing.c}).eq('id',existing.id).eq('profile_id',activeProfile.id);
+     if(error)console.error('meal update failed',error);
+     await upsertDaily();
+   }else{
+     const oldId=existing.id; existing.id=null;
+     await saveMealCloud(existing);
+     // If there was no DB row, saveMealCloud inserts the whole accumulated item.
+   }
+ }else{
+   meals.push(m);day.cal=meals.reduce((a,x)=>a+x.cal,0);day.p=meals.reduce((a,x)=>a+x.p,0);day.f=meals.reduce((a,x)=>a+x.f,0);day.c=meals.reduce((a,x)=>a+x.c,0);
+   saveLocal();render();
+   await saveMealCloud(m);
+ }
+ toast(m.name+' added');
 }
 function openPortion(key){
  const f=foodByKey(key);if(!f)return;
@@ -287,7 +346,7 @@ function openPortion(key){
  else addFood(f,1,'count');
 }
 function addByWeight(){const f=foodByKey(portionId.value);const g=Math.max(1,+portionWeight.value||0);closeModals();addFood(f,g,'g')}
-function addCustomFood(){
+async function addCustomFood(){
  const f={food_key:'custom_'+Date.now(),name:customName.value.trim(),calories_100g:+customCal.value||0,protein_100g:+customP.value||0,fat_100g:+customF.value||0,carbs_100g:+customC.value||0,unit:'100g'};
  if(!f.name){toast('Enter a food name');return}
  if(user) sb.from('foods').insert({user_id:user.id,profile_id:activeProfile.id,...f});
@@ -320,19 +379,26 @@ async function confirmWebFood(){
  webAmount.value=100;openModal('portionConfirmModal')
 }
 async function addWebFood(){
+ if(!webPending)return;
  const f={food_key:'web_'+Date.now(),name:webPending.name,calories_100g:webPending.cal,protein_100g:webPending.p,fat_100g:webPending.f,carbs_100g:webPending.c,unit:'100g'};
+ if(user&&activeProfile){
+   const {data,error}=await sb.from('foods').insert({user_id:user.id,profile_id:activeProfile.id,name:f.name,serving_size:'100 g',calories:f.calories_100g,protein:f.protein_100g,fat:f.fat_100g,carbs:f.carbs_100g}).select().single();
+   if(error)console.error('web food save failed',error); else if(data)f.id=data.id;
+ }
  savedFoods.push(f);
- if(user) await sb.from('foods').insert({user_id:user.id,profile_id:activeProfile.id,name:f.name,calories_100g:f.calories_100g,protein_100g:f.protein_100g,fat_100g:f.fat_100g,carbs_100g:f.carbs_100g,source:f.source||'Open Food Facts'});
- const g=Math.max(1,+webAmount.value||100);closeModals();addFood(f,g,'g');webPending=null
+ const g=Math.max(1,+webAmount.value||100);closeModals();await addFood(f,g,'g');webPending=null;
 }
 async function removeMeal(index){
  const m=meals[index];if(!m)return;
- if(user && m.id) await sb.from('meals').delete().eq('id',m.id).eq('profile_id',activeProfile.id);
+ if(user&&activeProfile){
+   if(m.id) await sb.from('meals').delete().eq('id',m.id).eq('profile_id',activeProfile.id);
+   else if(day.id) await sb.from('meals').delete().eq('daily_log_id',day.id).eq('profile_id',activeProfile.id).eq('food_key',m.foodKey);
+ }
  meals.splice(index,1);
  day.cal=meals.reduce((a,x)=>a+x.cal,0);day.p=meals.reduce((a,x)=>a+x.p,0);day.f=meals.reduce((a,x)=>a+x.f,0);day.c=meals.reduce((a,x)=>a+x.c,0);
  saveLocal();await upsertDaily();render();toast(m.name+' removed');
 }
-function clearMeals(){meals=[];day.cal=day.p=day.f=day.c=0;saveLocal();upsertDaily();render()}
+async function clearMeals(){if(user&&activeProfile&&day.id)await sb.from('meals').delete().eq('daily_log_id',day.id).eq('profile_id',activeProfile.id);meals=[];day.cal=day.p=day.f=day.c=0;saveLocal();await upsertDaily();render();toast('All meals cleared')}
 function generateMealPlan(){
  const r=Math.max(0,profile.targets.cal-day.cal),p=Math.max(0,profile.targets.p-day.p);
  let text=p>40?`Protein is the priority. Try chicken/fish with rice or chapathi, keeping the portion within about ${Math.round(r)} kcal.`:`A balanced next meal fits the remaining ${Math.round(r)} kcal. Choose a normal rice/chapathi portion plus vegetables and a protein source.`;
@@ -371,9 +437,17 @@ function renderWorkout(){
  workoutWindowTitle.textContent='Smart daily schedule';
  workoutWindowText.textContent='Recommended exercises are highlighted and sorted to the top. Cycling is logged in minutes at medium intensity.';
 }
-
+function saveActivity(){day.cycle=day.workout.cycle||0;day.burn=Math.max(0,+dom("burnInput").value||0);saveLocal();upsertDaily();render();toast('Activity saved')}
+async function saveWeight(){const w=+newWeight.value||0;if(!w)return;day.weight=w;saveLocal();await upsertDaily();if(user)await sb.from('body_measurements').insert({user_id:user.id,profile_id:activeProfile.id,measure_date:day.date,day_number:dayNumber(day.date),weight_kg:w});closeModals();render();toast('Weight saved')}
+async function saveMeasurement(){const x={weight_kg:+measureWeight.value,belly_cm:+measureBelly.value,waist_cm:+measureWaist.value,chest_cm:+measureChest.value,biceps_cm:+measureBiceps.value};if(user)await sb.from('body_measurements').insert({user_id:user.id,profile_id:activeProfile.id,date:today(),...x});day.weight=x.weight_kg;await upsertDaily();closeModals();render();toast('Measurements saved')}
+function simpleChart(el,vals,label,target=0){
+ if(!vals.length){el.textContent='Keep logging daily data.';return}
+ const max=Math.max(target,...vals,1),min=Math.min(0,...vals),w=460,h=120,p=12;
+ const pts=vals.map((v,i)=>`${p+i*(w-2*p)/Math.max(1,vals.length-1)},${h-p-(v-min)/(max-min)*(h-2*p)}`).join(' ');
+ el.innerHTML=`<div style="font-size:10px;color:#6b7280">${label}</div><svg viewBox="0 0 ${w} ${h}" width="100%" height="125"><polyline points="${pts}" fill="none" stroke="#111827" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${target?`<line x1="${p}" x2="${w-p}" y1="${h-p-(target-min)/(max-min)*(h-2*p)}" y2="${h-p-(target-min)/(max-min)*(h-2*p)}" stroke="#9ca3af" stroke-dasharray="5 5"/>`:''}</svg><small>${vals.map(v=>Math.round(v)).join(' · ')}</small>`;
+}
 async function refreshHistory(){
- if(user){const {data}=await sb.from('daily_logs').select('*').eq('profile_id',activeProfile.id).order('date');dailyHistory=(data||[]).map(x=>({date:x.date,cal:x.calories||0,p:x.protein||0,f:x.fat||0,c:x.carbs||0,burn:x.exercise_calories||0,steps:x.steps||0,weight:x.weight_kg}))}
+ if(user){const {data}=await sb.from('daily_logs').select('*').eq('profile_id',activeProfile.id).order('log_date');dailyHistory=(data||[]).map(x=>({date:x.log_date,cal:x.calories||0,p:x.protein||0,f:x.fat||0,c:x.carbs||0,burn:x.exercise_calories||0,steps:x.steps||0,weight:x.weight_kg}))}
 }
 async function analyzeWeek(){
  await refreshHistory();const d=dailyHistory.slice(-7);if(d.length<7){analysis.textContent=`You have ${d.length} logged day(s). Keep going until 7 days before making a meaningful calorie change.`;return}

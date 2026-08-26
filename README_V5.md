@@ -29,5 +29,5 @@ The website is aligned with the actual existing schema: `daily_logs.log_date`, `
 Run `supabase_v5_2_migration.sql` once. It adds optional starting waist, belly, chest and biceps columns to `app_profiles`.
 
 
-## V5.3
-Removed the redundant Activity Windows / Save Activity card. Exercise progress is saved directly from the +/- controls.
+## V5.4 Persistence fix
+Run `supabase_v5_4_migration.sql` once. It adds `daily_logs.workout_data` so individual exercise counts persist in Supabase. V5.4 uses `daily_logs.log_date` and `meals.daily_log_id` from the actual database schema.
