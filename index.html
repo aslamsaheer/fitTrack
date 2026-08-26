@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#111827">
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="styles.css">
-<title>Fat Loss Coach · v4.3</title>
+<title>Fat Loss Coach · v5.0</title>
 </head>
 <body>
 <div class="app">
@@ -58,11 +58,11 @@
 <section id="workout" class="page">
   <div class="title"><small>TRAINING</small><h2>Today's workout</h2></div>
   <div class="notice"><b id="workoutWindowTitle">Recommended schedule</b><br><span id="workoutWindowText">Short strength session plus walking/cardio.</span></div>
-  <div class="sec"><h3>Strength & core</h3></div>
+  <div class="sec"><h3>Today's exercises</h3><small>Green = recommended today</small></div>
   <div class="workout-list" id="workoutList"></div>
   <div class="sec"><h3>Activity windows</h3></div>
   <div class="schedule-list" id="scheduleList"></div>
-  <div class="card workout"><label>Cycle minutes <input id="cycleInput" type="number" min="0" value="0"></label><label>Estimated exercise burn <input id="burnInput" type="number" min="0" value="0"></label><button class="secondary" onclick="saveActivity()">✓ Save activity</button></div>
+  <div class="card workout"><label>Estimated exercise burn <input id="burnInput" type="number" min="0" value="0"></label><button class="secondary" onclick="saveActivity()">✓ Save activity</button></div>
 </section>
 
 <section id="progress" class="page">
@@ -79,11 +79,11 @@
 
 <section id="more" class="page">
   <div class="title"><small>SETUP</small><h2>Your plan</h2></div>
-  <div class="versionCard"><span>Fat Loss Coach</span><b>v4.3</b><small>Supabase · Mobile App</small></div>
+  <div class="versionCard"><span>Fat Loss Coach</span><b>v5.0</b><small>Supabase · Mobile App</small></div>
   <div class="settings">
-    <button onclick="openModal('profileModal')">👤 <b>Profile & targets</b><small id="profileSummary">29 · 159 cm · Lightly active</small></button>
+    <button onclick="openProfileManager()">👤 <b>Profiles</b><small id="profileSummary">Manage family profiles</small></button>
+    <button onclick="openModal('profileModal')">🎯 <b>Profile & targets</b><small id="profileTargetSummary">Set your targets</small></button>
     <button onclick="openModal('foodsModal')">🥜 <b>My saved foods</b><small>Foods found online are saved here</small></button>
-    <button onclick="signOut()">🚪 <b>Sign out</b><small id="authStatus">Signed in</small></button>
   </div>
 </section>
 </main>
@@ -97,7 +97,53 @@
 </nav>
 </div>
 
-<div class="modal" id="authModal"><div class="box"><h2>Welcome</h2><p>Sign in so your meals and progress are stored in Supabase.</p><label>Email<input id="authEmail" type="email"></label><label>Password<input id="authPassword" type="password"></label><button class="primary" onclick="auth('login')">Sign in</button><button class="secondary full" onclick="auth('signup')">Create account</button><p id="authMsg"></p></div></div>
+
+<div class="modal profile-gate" id="profileGate">
+  <div class="profile-box">
+    <div class="brand-mark">🔥</div>
+    <div class="eyebrow">FAT LOSS COACH</div>
+    <h1>Your better self<br><span>starts today.</span></h1>
+    <p>Choose your profile or create a new one. Your meals, workouts and progress stay separate.</p>
+    <div id="gateProfiles" class="gateProfiles"></div>
+    <button class="gradient-btn" onclick="showCreateProfile()">＋ Create New Profile</button>
+  </div>
+</div>
+
+<div class="modal" id="profileManagerModal">
+  <div class="profile-box manager-box">
+    <button class="x" onclick="closeModals()">×</button>
+    <div class="eyebrow">YOUR PROFILES</div>
+    <h2>Who's using the app?</h2>
+    <p>Tap a profile to switch. Each profile has separate history.</p>
+    <div id="managerProfiles" class="managerProfiles"></div>
+    <button class="gradient-btn" onclick="showCreateProfile()">＋ Add New Profile</button>
+  </div>
+</div>
+
+<div class="modal" id="createProfileModal">
+  <div class="profile-box">
+    <button class="x" onclick="closeModals()">×</button>
+    <div class="create-avatar" id="newAvatarPreview">👤</div>
+    <div class="eyebrow">CREATE YOUR PROFILE</div>
+    <h2>Let's get you started</h2>
+    <label>Your name<input id="profileName" maxlength="30" placeholder="e.g. Aslam"></label>
+    <label>Choose avatar
+      <div class="avatarChoices" id="avatarChoices">
+        <button type="button" onclick="pickAvatar('👨🏻')">👨🏻</button>
+        <button type="button" onclick="pickAvatar('👩🏻')">👩🏻</button>
+        <button type="button" onclick="pickAvatar('👦🏻')">👦🏻</button>
+        <button type="button" onclick="pickAvatar('👧🏻')">👧🏻</button>
+        <button type="button" onclick="pickAvatar('🧔🏻')">🧔🏻</button>
+        <button type="button" onclick="pickAvatar('👵🏻')">👵🏻</button>
+      </div>
+    </label>
+    <label>Age<input id="newAge" type="number" value="29"></label>
+    <label>Height cm<input id="newHeight" type="number" value="159"></label>
+    <label>Starting weight kg<input id="newWeightProfile" type="number" step=".1" value="68"></label>
+    <button class="gradient-btn" onclick="createNamedProfile()">Create Profile →</button>
+    <button class="text-btn" onclick="closeModals()">Cancel</button>
+  </div>
+</div>
 
 <div class="modal" id="profileModal"><div class="box"><button class="x" onclick="closeModals()">×</button><h2>Profile & targets</h2>
 <label>Age<input id="age" type="number" value="29"></label><label>Height cm<input id="height" type="number" value="159"></label><label>Starting weight kg<input id="startWeight" type="number" step=".1" value="68"></label>

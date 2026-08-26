@@ -4,3 +4,31 @@
 .meal{align-items:center}.meal>span{min-width:0}.meal>button{flex:none;margin-left:8px}
 
 .versionCard{background:#111827;color:#fff;border-radius:18px;padding:15px;margin:4px 0 12px;display:grid;grid-template-columns:1fr auto;align-items:center}.versionCard span{font-size:14px;font-weight:800}.versionCard b{font-size:18px}.versionCard small{grid-column:1/-1;color:#9ca3af;font-size:9px;margin-top:5px}
+.workout-row.recommended{border:1px solid #bbf7d0;background:#f0fdf4}.workout-row.recommended .exerciseName strong{color:#16a34a}.workout-row.recommended .target{color:#16a34a}.sec small{font-size:9px;color:#16a34a;font-weight:800}
+/* V5 profile onboarding */
+.profile-gate{background:linear-gradient(160deg,#071326 0%,#0b2740 52%,#071a25 100%);z-index:1000}
+.profile-gate .profile-box{max-height:92vh;overflow:auto}
+.profile-box{width:min(100%,430px);background:rgba(255,255,255,.97);border-radius:30px;padding:28px 22px;box-shadow:0 25px 80px rgba(0,0,0,.35);animation:profileIn .5s cubic-bezier(.2,.8,.2,1);text-align:left}
+.profile-gate .profile-box{background:linear-gradient(180deg,rgba(10,28,51,.98),rgba(6,20,34,.98));color:#fff}
+@keyframes profileIn{from{opacity:0;transform:translateY(30px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes avatarPop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+.brand-mark{font-size:52px;animation:avatarPop .7s ease}
+.eyebrow{font-size:10px;font-weight:900;letter-spacing:2px;color:#10b981;margin-top:6px}
+.profile-gate h1{font-size:36px;line-height:1.04;margin:10px 0}.profile-gate h1 span{color:#22c55e}
+.profile-box h2{font-size:25px;margin:8px 0}.profile-box p{color:#64748b;font-size:13px;line-height:1.45}.profile-gate p{color:#b6c7d9}
+.gradient-btn{width:100%;border:0;border-radius:16px;padding:15px 18px;font-size:14px;font-weight:900;color:#fff;background:linear-gradient(100deg,#16d58b,#18b6c9,#6d5dfc);box-shadow:0 10px 25px rgba(16,185,129,.25);cursor:pointer;transition:.2s; margin-top:10px}
+.gradient-btn:active{transform:scale(.98)}
+.text-btn{width:100%;border:0;background:none;padding:12px;color:#64748b;font-weight:800}
+.gateProfiles,.managerProfiles{display:grid;gap:10px;margin:18px 0}
+.profile-card{display:flex;align-items:center;gap:12px;padding:13px;border:1px solid #dbe4ee;border-radius:18px;background:#fff;cursor:pointer;transition:.2s;text-align:left}
+.profile-gate .profile-card{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.12);color:#fff}
+.profile-card:hover{transform:translateY(-2px);border-color:#34d399}
+.profile-card.active{border:2px solid #22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.1)}
+.avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#dbeafe,#dcfce7);font-size:27px;flex:none}
+.profile-card .pcopy{flex:1;min-width:0}.pcopy strong{display:block;font-size:15px}.pcopy small{display:block;margin-top:3px;color:#94a3b8;font-size:10px}.profile-gate .pcopy small{color:#b6c7d9}
+.profile-card .chev{font-size:22px;color:#94a3b8}
+.create-avatar{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;font-size:42px;background:linear-gradient(135deg,#dbeafe,#dcfce7);margin:0 auto 12px;animation:avatarPop .4s ease}
+.avatarChoices{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}.avatarChoices button{width:48px;height:48px;border-radius:50%;border:2px solid #e2e8f0;background:#fff;font-size:25px;cursor:pointer}.avatarChoices button.selected{border-color:#22c55e;background:#ecfdf5}
+.manager-box{max-height:88vh;overflow:auto}
+
+.profile-card-wrap{position:relative}.profile-card-wrap .profile-card{width:100%;padding-right:48px}.profile-edit-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:0;border-radius:10px;background:#f1f5f9;color:#475569;font-weight:900;z-index:2}.profile-gate .profile-edit-btn{display:none}

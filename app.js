@@ -1,5 +1,3 @@
-const authEmail=document.getElementById("authEmail");
-const authPassword=document.getElementById("authPassword");
 const authMsg=document.getElementById("authMsg");
 const age=document.getElementById("age");
 const height=document.getElementById("height");
@@ -110,43 +108,135 @@ async function loadSelectedDateValue(date){
 }
 async function loadCloudDay(date){
  if(!user)return;
- const {data:dl}=await sb.from('daily_logs').select('*').eq('user_id',user.id).eq('date',date).maybeSingle();
+ const {data:dl}=await sb.from('daily_logs').select('*').eq('profile_id',activeProfile.id).eq('date',date).maybeSingle();
  day=dl?{date,cal:dl.calories||0,p:dl.protein||0,f:dl.fat||0,c:dl.carbs||0,steps:dl.steps||0,cycle:dl.cycling_minutes||0,burn:dl.exercise_calories||0,workout:{}}:{date,cal:0,p:0,f:0,c:0,steps:0,cycle:0,burn:0,workout:{}};
- const {data:ml}=await sb.from('meals').select('*').eq('user_id',user.id).eq('date',date).order('created_at');
+ const {data:ml}=await sb.from('meals').select('*').eq('profile_id',activeProfile.id).eq('date',date).order('created_at');
  meals=(ml||[]).map(x=>({id:x.id,name:x.food_name,qty:x.quantity,unit:x.unit,cal:x.calories||0,p:x.protein||0,f:x.fat||0,c:x.carbs||0,foodKey:x.food_key||''}));
 }
+
+let profilesList=[];
+let activeProfile=null;
+let selectedAvatar='👨🏻';
+
 async function init(){
  loadLocal();
- const {data}=await sb.auth.getSession(); user=data.session?.user||null;
- if(!user){openModal('authModal')} else {await loadCloud()}
- render();
+ const {data}=await sb.auth.getSession();
+ user=data.session?.user||null;
+ if(!user){
+   const r=await sb.auth.signInAnonymously();
+   if(r.error){toast('Cloud sync unavailable');}
+   else user=r.data.user;
+ }
+ await loadNamedProfiles();
+ if(!activeProfile){showProfileGate();} 
+ else {await loadCloud();render();}
 }
-async function auth(mode){
- const email=authEmail.value.trim(),pass=authPassword.value;
- if(!email||pass.length<6){authMsg.textContent='Enter a valid email and password (6+ characters).';return}
- let r=mode==='signup'?await sb.auth.signUp({email,password:pass}):await sb.auth.signInWithPassword({email,password:pass});
- if(r.error){authMsg.textContent=r.error.message;return}
- user=r.data.user;closeModals();await loadCloud();render();toast(mode==='signup'?'Account created':'Signed in')
+function showProfileGate(){
+ const gate=document.getElementById('profileGate');
+ if(gate){gate.classList.add('show');renderProfileCards('gateProfiles',true);}
 }
-async function signOut(){await sb.auth.signOut();user=null;openModal('authModal');toast('Signed out')}
-
-async function loadCloud(){
+function hideProfileGate(){const gate=document.getElementById('profileGate');if(gate)gate.classList.remove('show')}
+function showCreateProfile(){
+ closeModals();document.getElementById('createProfileModal').classList.add('show');
+ const btn=document.querySelector('#createProfileModal .gradient-btn');if(btn){btn.textContent='Create Profile →';btn.onclick=createNamedProfile;}
+ document.getElementById('profileName').value='';selectedAvatar='👨🏻';pickAvatar(selectedAvatar);
+}
+function pickAvatar(a){selectedAvatar=a;const p=document.getElementById('newAvatarPreview');if(p)p.textContent=a;document.querySelectorAll('.avatarChoices button').forEach(b=>b.classList.toggle('selected',b.textContent===a))}
+async function loadNamedProfiles(){
  if(!user)return;
- const {data:p}=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();
- if(p){startDate=p.start_date||startDate;profile={...profile,age:p.age||29,height:p.height_cm||159,weight:p.starting_weight_kg||68,activity:p.activity_level==='lightly_active'?1.35:1.2,targets:{cal:p.calorie_target||1700,p:p.protein_target||120,f:p.fat_target||55,c:p.carb_target||185}}}
- else await saveProfile(true);
- const {data:logs}=await sb.from('daily_logs').select('*').eq('user_id',user.id).order('date');
+ const {data,error}=await sb.from('app_profiles').select('*').eq('owner_id',user.id).order('created_at');
+ if(error){console.warn(error);profilesList=[];return}
+ profilesList=data||[];
+ const savedId=localStorage.getItem('flc_active_profile');
+ activeProfile=profilesList.find(p=>p.id===savedId)||null;
+}
+function renderProfileCards(containerId,gate=false){
+ const box=document.getElementById(containerId);if(!box)return;
+ box.innerHTML=profilesList.map(p=>`<div class="profile-card-wrap"><button class="profile-card ${activeProfile?.id===p.id?'active':''}" onclick="switchProfile('${p.id}')"><span class="avatar">${p.avatar||'👤'}</span><span class="pcopy"><strong>${escapeHtml(p.name)}</strong><small>${p.starting_weight_kg||'—'} kg · ${activeProfile?.id===p.id?'Active profile':'Tap to switch'}</small></span><span class="chev">›</span></button><button class="profile-edit-btn" onclick="event.stopPropagation();editProfile('${p.id}')">✎</button></div>`).join('');
+}
+async function createNamedProfile(){
+ const name=document.getElementById('profileName').value.trim();
+ if(!name){toast('Enter a name');return}
+ if(!user){toast('Cloud connection unavailable');return}
+ const age=+document.getElementById('newAge').value||29;
+ const height=+document.getElementById('newHeight').value||159;
+ const weight=+document.getElementById('newWeightProfile').value||68;
+ const id=crypto.randomUUID();
+ const row={id,owner_id:user.id,name,avatar:selectedAvatar,age,height_cm:height,starting_weight_kg:weight,start_date:today(),calorie_target:1700,protein_target:120,fat_target:55,carb_target:185};
+ const {data,error}=await sb.from('app_profiles').insert(row).select().single();
+ if(error){toast(error.message);return}
+ profilesList.push(data);activeProfile=data;localStorage.setItem('flc_active_profile',data.id);
+ profile={...profile,age,height,weight,targets:{cal:1700,p:120,f:55,c:185}};
+ startDate=today();selectedDate=today();day={date:selectedDate,cal:0,p:0,f:0,c:0,steps:0,cycle:0,burn:0,workout:{}};meals=[];dailyHistory=[];
+ saveLocal();document.getElementById('createProfileModal').classList.remove('show');hideProfileGate();
+ await loadCloud();render();toast('Welcome, '+name+' 🎉');
+}
+async function switchProfile(id){
+ const p=profilesList.find(x=>x.id===id);if(!p)return;
+ activeProfile=p;localStorage.setItem('flc_active_profile',p.id);
+ profile={...profile,age:p.age||29,height:p.height_cm||159,weight:p.starting_weight_kg||68,activity:1.35,deficit:400,targets:{cal:p.calorie_target||1700,p:p.protein_target||120,f:p.fat_target||55,c:p.carb_target||185}};
+
+ startDate=p.start_date||today();selectedDate=today();day={date:selectedDate,cal:0,p:0,f:0,c:0,steps:0,cycle:0,burn:0,workout:{}};meals=[];dailyHistory=[];
+ closeModals();hideProfileGate();await loadCloud();render();toast('Switched to '+p.name);
+}
+function openProfileManager(){closeModals();renderProfileCards('managerProfiles');openModal('profileManagerModal')}
+
+function editProfile(id){
+ const p=profilesList.find(x=>x.id===id);if(!p)return;
+ document.getElementById('profileName').value=p.name||'';
+ document.getElementById('newAge').value=p.age||29;
+ document.getElementById('newHeight').value=p.height_cm||159;
+ document.getElementById('newWeightProfile').value=p.starting_weight_kg||68;
+ pickAvatar(p.avatar||'👤');
+ document.getElementById('createProfileModal').classList.add('show');
+ const btn=document.querySelector('#createProfileModal .gradient-btn');
+ if(btn){btn.textContent='Save Profile';btn.onclick=()=>saveEditedProfile(id);}
+}
+async function saveEditedProfile(id){
+ const p=profilesList.find(x=>x.id===id);if(!p)return;
+ const name=document.getElementById('profileName').value.trim();if(!name){toast('Enter a name');return}
+ const row={name,avatar:selectedAvatar,age:+document.getElementById('newAge').value||29,height_cm:+document.getElementById('newHeight').value||159,starting_weight_kg:+document.getElementById('newWeightProfile').value||68};
+ const {data,error}=await sb.from('app_profiles').update(row).eq('id',id).select().single();
+ if(error){toast(error.message);return}
+ profilesList=profilesList.map(x=>x.id===id?data:x);
+ if(activeProfile?.id===id){activeProfile=data;profile.age=data.age;profile.height=data.height_cm;profile.weight=data.starting_weight_kg}
+ document.getElementById('createProfileModal').classList.remove('show');
+ const btn=document.querySelector('#createProfileModal .gradient-btn');if(btn){btn.textContent='Create Profile →';btn.onclick=createNamedProfile}
+ renderProfileCards('managerProfiles');render();toast('Profile updated');
+}
+async function deleteCurrentProfile(){
+ if(!activeProfile)return;
+ if(profilesList.length<=1){toast('Keep at least one profile');return}
+ if(!confirm('Delete '+activeProfile.name+' and all its history?'))return;
+ const id=activeProfile.id;
+ // Child rows are deleted by SQL cascade where configured; otherwise delete explicitly.
+ await sb.from('daily_logs').delete().eq('profile_id',id);
+ await sb.from('meals').delete().eq('profile_id',id);
+ await sb.from('foods').delete().eq('profile_id',id);
+ await sb.from('body_measurements').delete().eq('profile_id',id);
+ await sb.from('app_profiles').delete().eq('id',id);
+ profilesList=profilesList.filter(p=>p.id!==id);activeProfile=profilesList[0]||null;
+ if(activeProfile){localStorage.setItem('flc_active_profile',activeProfile.id);await loadCloud();renderProfileCards('managerProfiles');render();toast('Profile deleted')}
+ else{localStorage.removeItem('flc_active_profile');showProfileGate()}
+}
+async function loadCloud(){
+ if(!user||!activeProfile)return;
+ const p=activeProfile;
+ startDate=p.start_date||startDate;
+ profile={...profile,age:p.age||29,height:p.height_cm||159,weight:p.starting_weight_kg||68,activity:1.35,targets:{cal:p.calorie_target||1700,p:p.protein_target||120,f:p.fat_target||55,c:p.carb_target||185}};
+
+ const {data:logs}=await sb.from('daily_logs').select('*').eq('profile_id',activeProfile.id).order('date');
  dailyHistory=(logs||[]).map(x=>({date:x.date,cal:x.calories||0,p:x.protein||0,f:x.fat||0,c:x.carbs||0,burn:x.exercise_calories||0,steps:x.steps||0,weight:x.weight_kg}));
  await loadCloudDay(selectedDate);
- const {data:foods}=await sb.from('foods').select('*').eq('user_id',user.id).order('name');
+ const {data:foods}=await sb.from('foods').select('*').eq('profile_id',activeProfile.id).order('name');
  savedFoods=foods||[];
 }
 async function upsertDaily(){
  if(!user){saveLocal();return}
- await sb.from('daily_logs').upsert({user_id:user.id,date:day.date,calories:day.cal,protein:day.p,fat:day.f,carbs:day.c,exercise_calories:day.burn,steps:day.steps,walking_minutes:Math.round(day.steps/100),cycling_minutes:day.cycle,workout_completed:Object.keys(day.workout).length>0},{onConflict:'user_id,date'});
+ await sb.from('daily_logs').upsert({user_id:user.id,profile_id:activeProfile.id,date:day.date,calories:day.cal,protein:day.p,fat:day.f,carbs:day.c,exercise_calories:day.burn,steps:day.steps,walking_minutes:Math.round(day.steps/100),cycling_minutes:day.cycle,workout_completed:Object.keys(day.workout).length>0},{onConflict:'profile_id,date'});
 }
 async function saveMealCloud(m){
- if(user) await sb.from('meals').insert({user_id:user.id,date:day.date,food_key:m.foodKey||'',food_name:m.name,quantity:m.qty,unit:m.unit,calories:m.calories,protein:m.p,fat:m.f,carbs:m.c});
+ if(user) await sb.from('meals').insert({user_id:user.id,profile_id:activeProfile.id,date:day.date,food_key:m.foodKey||'',food_name:m.name,quantity:m.qty,unit:m.unit,calories:m.calories,protein:m.p,fat:m.f,carbs:m.c});
 }
 function calcTarget(){
  const bmr=10*profile.weight+6.25*profile.height-5*profile.age+5;
@@ -156,7 +246,7 @@ function calcTarget(){
 }
 async function saveProfile(silent=false){
  profile.age=+age.value||29;profile.height=+height.value||159;profile.weight=+startWeight.value||68;profile.activity=+activity.value||1.35;profile.deficit=+deficit.value||400;calcTarget();
- if(user) await sb.from('profiles').upsert({id:user.id,start_date:startDate,age:profile.age,height_cm:profile.height,starting_weight_kg:profile.weight,activity_level:profile.activity===1.35?'lightly_active':'other',calorie_target:profile.targets.cal,protein_target:profile.targets.p,fat_target:profile.targets.f,carb_target:profile.targets.c});
+ if(user && activeProfile) { const {data:p,error}=await sb.from('app_profiles').update({age:profile.age,height_cm:profile.height,starting_weight_kg:profile.weight,start_date:startDate,calorie_target:profile.targets.cal,protein_target:profile.targets.p,fat_target:profile.targets.f,carb_target:profile.targets.c}).eq('id',activeProfile.id).select().single(); if(!error&&p) activeProfile=p; }
  saveLocal();if(!silent){closeModals();render();toast('Targets saved')}
 }
 function setSteps(v){day.steps=+v;saveLocal();render();upsertDaily()}
@@ -180,7 +270,7 @@ function addByWeight(){const f=foodByKey(portionId.value);const g=Math.max(1,+po
 function addCustomFood(){
  const f={food_key:'custom_'+Date.now(),name:customName.value.trim(),calories_100g:+customCal.value||0,protein_100g:+customP.value||0,fat_100g:+customF.value||0,carbs_100g:+customC.value||0,unit:'100g'};
  if(!f.name){toast('Enter a food name');return}
- if(user) sb.from('foods').insert({user_id:user.id,...f});
+ if(user) sb.from('foods').insert({user_id:user.id,profile_id:activeProfile.id,...f});
  savedFoods.push(f);closeModals();openPortion(f.food_key);toast('Custom food saved')
 }
 function renderFoodList(q=''){
@@ -212,12 +302,12 @@ async function confirmWebFood(){
 async function addWebFood(){
  const f={food_key:'web_'+Date.now(),name:webPending.name,calories_100g:webPending.cal,protein_100g:webPending.p,fat_100g:webPending.f,carbs_100g:webPending.c,unit:'100g'};
  savedFoods.push(f);
- if(user) await sb.from('foods').insert({user_id:user.id,name:f.name,calories_100g:f.calories_100g,protein_100g:f.protein_100g,fat_100g:f.fat_100g,carbs_100g:f.carbs_100g,source:f.source||'Open Food Facts'});
+ if(user) await sb.from('foods').insert({user_id:user.id,profile_id:activeProfile.id,name:f.name,calories_100g:f.calories_100g,protein_100g:f.protein_100g,fat_100g:f.fat_100g,carbs_100g:f.carbs_100g,source:f.source||'Open Food Facts'});
  const g=Math.max(1,+webAmount.value||100);closeModals();addFood(f,g,'g');webPending=null
 }
 async function removeMeal(index){
  const m=meals[index];if(!m)return;
- if(user && m.id) await sb.from('meals').delete().eq('id',m.id).eq('user_id',user.id);
+ if(user && m.id) await sb.from('meals').delete().eq('id',m.id).eq('profile_id',activeProfile.id);
  meals.splice(index,1);
  day.cal=meals.reduce((a,x)=>a+x.cal,0);day.p=meals.reduce((a,x)=>a+x.p,0);day.f=meals.reduce((a,x)=>a+x.f,0);day.c=meals.reduce((a,x)=>a+x.c,0);
  saveLocal();await upsertDaily();render();toast(m.name+' removed');
@@ -228,28 +318,42 @@ function generateMealPlan(){
  let text=p>40?`Protein is the priority. Try chicken/fish with rice or chapathi, keeping the portion within about ${Math.round(r)} kcal.`:`A balanced next meal fits the remaining ${Math.round(r)} kcal. Choose a normal rice/chapathi portion plus vegetables and a protein source.`;
  planTitle.textContent=p>40?'Protein-focused next meal':'Balanced next meal';planText.textContent=text
 }
-function workoutTargets(){
- return [['pull','Pull-ups',6,'reps'],['push','Push-ups',30,'reps'],['roller','Ab roller',6,'reps'],['plank','Plank',60,'sec'],['leg','Leg raises',15,'reps']]
+const ALL_EXERCISES=[
+ ['cycle','Cycling','minutes','medium','cardio'],['pull','Pull-ups','reps','bodyweight','strength'],
+ ['push','Push-ups','reps','bodyweight','strength'],['roller','Ab roller','reps','bodyweight','core'],
+ ['plank','Plank','sec','bodyweight','core'],['leg','Leg raises','reps','bodyweight','core'],
+ ['hang','Hanging knee raises','reps','bodyweight','core'],['side','Side plank','sec','bodyweight','core'],
+ ['squat','Bodyweight squats','reps','bodyweight','legs']
+];
+function exerciseTarget(id){return ({cycle:30,pull:6,push:30,roller:6,plank:60,leg:15,hang:8,side:30,squat:30})[id]||0}
+function recommendedExercises(){
+ const h=new Date().getHours();
+ if(h<11)return new Set(['pull','push','roller','plank','leg','hang']);
+ if(h<15)return new Set([]);
+ if(h<19)return new Set(['cycle','pull','push','roller','plank','leg']);
+ return new Set(['cycle','plank','side','leg']);
 }
-function changeExercise(id,d){day.workout[id]=Math.max(0,(day.workout[id]||0)+d);saveLocal();upsertDaily();render()}
-function schedule(){
- const h=new Date().getHours(), w=win();
- const slots=[
-  {time:'Morning',icon:'🌅',text:'5–10 min mobility. Main strength session after breakfast/tea if convenient.',show:true},
-  {time:'After lunch',icon:'🍛',text:'15–20 min easy/brisk walk after digestion; avoid hard exercise immediately after a heavy meal.',show:true},
-  {time:'Evening',icon:'🌇',text:'25–40 min exercise cycle or brisk walk if activity target is not met.',show:true},
-  {time:'Night',icon:'🌙',text:'Optional light mobility. Avoid hard training close to bedtime.',show:true}
- ];
- return slots;
+function changeExercise(id,d){
+ day.workout[id]=Math.max(0,(day.workout[id]||0)+d);
+ if(id==='cycle')day.cycle=day.workout[id];
+ saveLocal();upsertDaily();render()
 }
 function renderWorkout(){
- const targets=workoutTargets();workoutList.innerHTML=targets.map(x=>`<div class="workout-row"><span class="exerciseName">${x[1]}<small>Target ${x[2]} ${x[3]}</small></span><strong class="target">${x[2]}</strong><div class="stepper"><button onclick="changeExercise('${x[0]}',-1)">−</button><b>${day.workout[x[0]]||0}</b><button onclick="changeExercise('${x[0]}',1)">+</button></div></div>`).join('');
+ const rec=recommendedExercises();
+ const list=ALL_EXERCISES.map(x=>({id:x[0],name:x[1],unit:x[2],type:x[3],category:x[4],target:exerciseTarget(x[0]),recommended:rec.has(x[0])}));
+ list.sort((a,b)=>Number(b.recommended)-Number(a.recommended)||a.category.localeCompare(b.category)||a.name.localeCompare(b.name));
+ workoutList.innerHTML=list.map(x=>{
+  const actual=day.workout[x.id]||0;
+  const unit=x.id==='cycle'?'min':x.unit;
+  return `<div class="workout-row ${x.recommended?'recommended':''}"><span class="exerciseName"><strong>${x.recommended?'★ ':''}${x.name}</strong><small>${x.recommended?'Recommended today · ':''}Target ${x.target} ${unit}${x.id==='cycle'?' · Medium intensity':''}</small></span><strong class="target">${x.target}</strong><div class="stepper"><button onclick="changeExercise('${x.id}',-1)">−</button><b>${actual}</b><button onclick="changeExercise('${x.id}',1)">+</button></div></div>`;
+ }).join('');
  scheduleList.innerHTML=schedule().map(x=>`<div class="slot"><strong>${x.icon} ${x.time}</strong><small>${x.text}</small></div>`).join('');
- workoutWindowTitle.textContent='Smart daily schedule';workoutWindowText.textContent='Strength is best when you are fueled; walking/cardio can be split into shorter sessions.';
+ workoutWindowTitle.textContent='Smart daily schedule';
+ workoutWindowText.textContent='Recommended exercises are highlighted and sorted to the top. Cycling is logged in minutes at medium intensity.';
 }
-function saveActivity(){day.cycle=Math.max(0,+cycleInput.value||0);day.burn=Math.max(0,+burnInput.value||0);saveLocal();upsertDaily();render();toast('Activity saved')}
-async function saveWeight(){const w=+newWeight.value||0;if(!w)return;day.weight=w;saveLocal();await upsertDaily();if(user)await sb.from('body_measurements').insert({user_id:user.id,date:day.date,weight_kg:w});closeModals();render();toast('Weight saved')}
-async function saveMeasurement(){const x={weight_kg:+measureWeight.value,belly_cm:+measureBelly.value,waist_cm:+measureWaist.value,chest_cm:+measureChest.value,biceps_cm:+measureBiceps.value};if(user)await sb.from('body_measurements').insert({user_id:user.id,date:today(),...x});day.weight=x.weight_kg;await upsertDaily();closeModals();render();toast('Measurements saved')}
+function saveActivity(){day.cycle=day.workout.cycle||0;day.burn=Math.max(0,+dom("burnInput").value||0);saveLocal();upsertDaily();render();toast('Activity saved')}
+async function saveWeight(){const w=+newWeight.value||0;if(!w)return;day.weight=w;saveLocal();await upsertDaily();if(user)await sb.from('body_measurements').insert({user_id:user.id,profile_id:activeProfile.id,date:day.date,weight_kg:w});closeModals();render();toast('Weight saved')}
+async function saveMeasurement(){const x={weight_kg:+measureWeight.value,belly_cm:+measureBelly.value,waist_cm:+measureWaist.value,chest_cm:+measureChest.value,biceps_cm:+measureBiceps.value};if(user)await sb.from('body_measurements').insert({user_id:user.id,profile_id:activeProfile.id,date:today(),...x});day.weight=x.weight_kg;await upsertDaily();closeModals();render();toast('Measurements saved')}
 function simpleChart(el,vals,label,target=0){
  if(!vals.length){el.textContent='Keep logging daily data.';return}
  const max=Math.max(target,...vals,1),min=Math.min(0,...vals),w=460,h=120,p=12;
@@ -257,7 +361,7 @@ function simpleChart(el,vals,label,target=0){
  el.innerHTML=`<div style="font-size:10px;color:#6b7280">${label}</div><svg viewBox="0 0 ${w} ${h}" width="100%" height="125"><polyline points="${pts}" fill="none" stroke="#111827" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${target?`<line x1="${p}" x2="${w-p}" y1="${h-p-(target-min)/(max-min)*(h-2*p)}" y2="${h-p-(target-min)/(max-min)*(h-2*p)}" stroke="#9ca3af" stroke-dasharray="5 5"/>`:''}</svg><small>${vals.map(v=>Math.round(v)).join(' · ')}</small>`;
 }
 async function refreshHistory(){
- if(user){const {data}=await sb.from('daily_logs').select('*').eq('user_id',user.id).order('date');dailyHistory=(data||[]).map(x=>({date:x.date,cal:x.calories||0,p:x.protein||0,f:x.fat||0,c:x.carbs||0,burn:x.exercise_calories||0,steps:x.steps||0,weight:x.weight_kg}))}
+ if(user){const {data}=await sb.from('daily_logs').select('*').eq('profile_id',activeProfile.id).order('date');dailyHistory=(data||[]).map(x=>({date:x.date,cal:x.calories||0,p:x.protein||0,f:x.fat||0,c:x.carbs||0,burn:x.exercise_calories||0,steps:x.steps||0,weight:x.weight_kg}))}
 }
 async function analyzeWeek(){
  await refreshHistory();const d=dailyHistory.slice(-7);if(d.length<7){analysis.textContent=`You have ${d.length} logged day(s). Keep going until 7 days before making a meaningful calorie change.`;return}
@@ -266,7 +370,8 @@ async function analyzeWeek(){
  let action=Math.abs(delta)<.1?'Keep calories and improve activity consistency.':delta<-.8?'Progress may be fast; protect strength and recovery.':'Plan appears reasonable; keep monitoring the belly/waist trend.';
  analysis.innerHTML=`<b>Week review</b><br>Average calories: ${Math.round(avg('cal'))} kcal/day<br>Average protein: ${Math.round(avg('p'))} g/day<br>Exercise burn: ${Math.round(d.reduce((a,x)=>a+x.burn,0))} kcal/week<br>Average steps: ${Math.round(avg('steps')).toLocaleString()}<br>Weight change: ${delta>=0?'+':''}${delta.toFixed(1)} kg<br><br><b>Recommendation:</b> ${action}`;
 }
-function render(){
+function updateProfileUI(){const s=document.getElementById('profileSummary');if(s)s.textContent=activeProfile?activeProfile.name+' · '+(profile.weight||'—')+' kg':'Choose a profile';const t=document.getElementById('profileTargetSummary');if(t)t.textContent=activeProfile?(profile.targets.cal+' kcal · '+profile.targets.p+' g protein'):'Set your targets';}
+function render(){updateProfileUI();
  const t=profile.targets;
  dayLabel.textContent='Day '+dayNumber(selectedDate);
  dateLabel.textContent=selectedDate===today()?'Today':formatDate(selectedDate);
