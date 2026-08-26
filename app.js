@@ -1,23 +1,3 @@
-
-// Development-safe cache handling: always prefer fresh app assets.
-(async function(){
-  try{
-    const SW_VERSION='flc-v4-1';
-    const regs=await navigator.serviceWorker?.getRegistrations?.()||[];
-    for(const reg of regs){
-      if(!reg.active || !reg.active.scriptURL.includes('sw.js')) continue;
-      // The new service worker owns this page; older registrations are retired on reload.
-      const old=reg.active.scriptURL;
-      if(old && !old.includes('v4-1')){
-        await reg.unregister();
-      }
-    }
-    if(window.caches){
-      const keys=await caches.keys();
-      await Promise.all(keys.filter(k=>k.startsWith('flc-') && k!==SW_VERSION).map(k=>caches.delete(k)));
-    }
-  }catch(e){}
-})();
 const authEmail=document.getElementById("authEmail");
 const authPassword=document.getElementById("authPassword");
 const authMsg=document.getElementById("authMsg");
@@ -111,36 +91,29 @@ function openModal(id){document.getElementById(id).classList.add('show')}
 function closeModals(){document.querySelectorAll('.modal').forEach(x=>x.classList.remove('show'))}
 
 
-function dateDiff(a,b){const A=new Date(a+'T00:00:00'),B=new Date(b+'T00:00:00');return Math.round((A-B)/86400000)}
+function dateDiff(a,b){return Math.round((new Date(a+'T00:00:00')-new Date(b+'T00:00:00'))/86400000)}
 function dayNumber(date){return Math.max(1,dateDiff(date,startDate)+1)}
-function formatDate(date){
- const d=new Date(date+'T00:00:00');
- return d.toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});
-}
-function openDayPicker(){dom("selectedDate").value=selectedDate;openModal("dayModal")}
+function formatDate(date){return new Date(date+'T00:00:00').toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'})}
+function openDayPicker(){selectedDateInput().value=selectedDate;openModal('dayModal')}
+function selectedDateInput(){return document.getElementById('selectedDate')}
 function changeDay(delta){
  const d=new Date(selectedDate+'T00:00:00');d.setDate(d.getDate()+delta);
- const next=d.toISOString().slice(0,10);
- if(next>today()) return;
- loadSelectedDateValue(next);
+ const next=d.toISOString().slice(0,10);if(next>today())return;loadSelectedDateValue(next);
 }
-async function loadSelectedDate(){await loadSelectedDateValue(dom("selectedDate").value||today());closeModals()}
+async function loadSelectedDate(){await loadSelectedDateValue(selectedDateInput().value||today());closeModals()}
 async function goToday(){await loadSelectedDateValue(today());closeModals()}
 async function loadSelectedDateValue(date){
- if(!date)return;
- if(date>today()){toast("Future days cannot be logged");return}
- if(selectedDate!==date){await upsertDaily();selectedDate=date;day={date,cal:0,p:0,f:0,c:0,steps:0,cycle:0,burn:0,workout:{}};meals=[]}
- else day.date=date;
- if(user) await loadCloudDay(date);
- saveLocal();render();toast("Opened "+formatDate(date));
+ if(!date||date>today())return;
+ if(user)await loadCloudDay(date);
+ else {selectedDate=date;day={date,cal:0,p:0,f:0,c:0,steps:0,cycle:0,burn:0,workout:{}};meals=[]}
+ selectedDate=date;day.date=date;saveLocal();render();toast('Opened '+formatDate(date));
 }
 async function loadCloudDay(date){
  if(!user)return;
  const {data:dl}=await sb.from('daily_logs').select('*').eq('user_id',user.id).eq('date',date).maybeSingle();
- if(dl) day={date,cal:dl.calories||0,p:dl.protein||0,f:dl.fat||0,c:dl.carbs||0,steps:dl.steps||0,cycle:dl.cycling_minutes||0,burn:dl.exercise_calories||0,workout:{}};
+ day=dl?{date,cal:dl.calories||0,p:dl.protein||0,f:dl.fat||0,c:dl.carbs||0,steps:dl.steps||0,cycle:dl.cycling_minutes||0,burn:dl.exercise_calories||0,workout:{}}:{date,cal:0,p:0,f:0,c:0,steps:0,cycle:0,burn:0,workout:{}};
  const {data:ml}=await sb.from('meals').select('*').eq('user_id',user.id).eq('date',date).order('created_at');
  meals=(ml||[]).map(x=>({id:x.id,name:x.food_name,qty:x.quantity,unit:x.unit,cal:x.calories||0,p:x.protein||0,f:x.fat||0,c:x.carbs||0,foodKey:x.food_key||''}));
- if(!dl){day={date,cal:0,p:0,f:0,c:0,steps:0,cycle:0,burn:0,workout:{}}}
 }
 async function init(){
  loadLocal();
@@ -242,6 +215,13 @@ async function addWebFood(){
  if(user) await sb.from('foods').insert({user_id:user.id,name:f.name,calories_100g:f.calories_100g,protein_100g:f.protein_100g,fat_100g:f.fat_100g,carbs_100g:f.carbs_100g,source:f.source||'Open Food Facts'});
  const g=Math.max(1,+webAmount.value||100);closeModals();addFood(f,g,'g');webPending=null
 }
+async function removeMeal(index){
+ const m=meals[index];if(!m)return;
+ if(user && m.id) await sb.from('meals').delete().eq('id',m.id).eq('user_id',user.id);
+ meals.splice(index,1);
+ day.cal=meals.reduce((a,x)=>a+x.cal,0);day.p=meals.reduce((a,x)=>a+x.p,0);day.f=meals.reduce((a,x)=>a+x.f,0);day.c=meals.reduce((a,x)=>a+x.c,0);
+ saveLocal();await upsertDaily();render();toast(m.name+' removed');
+}
 function clearMeals(){meals=[];day.cal=day.p=day.f=day.c=0;saveLocal();upsertDaily();render()}
 function generateMealPlan(){
  const r=Math.max(0,profile.targets.cal-day.cal),p=Math.max(0,profile.targets.p-day.p);
@@ -304,15 +284,7 @@ function render(){
 }
 function renderMeals(){
  if(!meals.length){mealLog.innerHTML='<div class="card">No meals logged today.</div>';return}
- mealLog.innerHTML=meals.map(x=>`<div class="meal"><span>${x.name}${x.unit==='count'?' × '+x.qty:' — '+Math.round(x.qty)+' g'}<small>${Math.round(x.p)} g protein · ${Math.round(x.f)} g fat · ${Math.round(x.c)} g carbs</small></span><b>${Math.round(x.cal)} kcal</b></div>`).join('');
+ mealLog.innerHTML=meals.map((x,i)=>`<div class="meal"><span>${x.name}${x.unit==='count'?' × '+x.qty:' — '+Math.round(x.qty)+' g'}<small>${Math.round(x.p)} g protein · ${Math.round(x.f)} g fat · ${Math.round(x.c)} g carbs</small></span><b>${Math.round(x.cal)} kcal</b><button class="removeMeal" title="Remove this item" onclick="removeMeal(${i})">×</button></div>`).join('');
 }
 document.getElementById('foodSearch').addEventListener('input',e=>renderFoodList(e.target.value));
 init();
-window.addEventListener('load', async ()=>{
-  try{
-    if('serviceWorker' in navigator){
-      const reg=await navigator.serviceWorker.register('./sw.js?v=v4.1',{updateViaCache:'none'});
-      await reg.update();
-    }
-  }catch(e){}
-});

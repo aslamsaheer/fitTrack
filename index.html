@@ -5,13 +5,16 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=4.1">
-<title>Fat Loss Coach</title>
+<link rel="stylesheet" href="styles.css">
+<title>Fat Loss Coach · v4.3</title>
 </head>
 <body>
 <div class="app">
 <header>
-  <div class="dayHeader"><small>PERSONAL FAT-LOSS COACH · v4.1</small><div class="dayControls"><button class="dayArrow" onclick="changeDay(-1)">‹</button><button class="dayTitle" onclick="openDayPicker()"><h1 id="dayLabel">Day 1</h1><span id="dateLabel">Today</span></button><button class="dayArrow" onclick="changeDay(1)">›</button></div></div>
+  <div class="dayHeader"><small>PERSONAL FAT-LOSS COACH</small>
+<div class="dayControls"><button class="dayArrow" onclick="changeDay(-1)">‹</button>
+<button class="dayTitle" onclick="openDayPicker()"><h1 id="dayLabel">Day 1</h1><span id="dateLabel">Today</span></button>
+<button class="dayArrow" onclick="changeDay(1)">›</button></div></div>
   <button class="round" onclick="openModal('profileModal')">⚙️</button>
 </header>
 
@@ -76,6 +79,7 @@
 
 <section id="more" class="page">
   <div class="title"><small>SETUP</small><h2>Your plan</h2></div>
+  <div class="versionCard"><span>Fat Loss Coach</span><b>v4.3</b><small>Supabase · Mobile App</small></div>
   <div class="settings">
     <button onclick="openModal('profileModal')">👤 <b>Profile & targets</b><small id="profileSummary">29 · 159 cm · Lightly active</small></button>
     <button onclick="openModal('foodsModal')">🥜 <b>My saved foods</b><small>Foods found online are saved here</small></button>
@@ -105,8 +109,7 @@
 
 <div class="modal" id="portionModal"><div class="box"><button class="x" onclick="closeModals()">×</button><h2 id="portionTitle">Food portion</h2><p id="portionBase"></p><input type="hidden" id="portionId"><label>Weight (g)<input id="portionWeight" type="number" min="1" value="100"></label><button class="primary" onclick="addByWeight()">Add portion</button></div></div>
 
-<div class="modal" id="dayModal"><div class="box"><button class="x" onclick="closeModals()">×</button><h2>Change day</h2><p>Select the date you want to view or log. You can move backward to catch up on missed days.</p><label>Date<input id="selectedDate" type="date"></label><button class="primary" onclick="loadSelectedDate()">Open this day</button><button class="secondary full" onclick="goToday()">Go to today</button></div></div>
-
+<div class="modal" id="dayModal"><div class="box"><button class="x" onclick="closeModals()">×</button><h2>Change day</h2><p>Select a previous date to view or log it.</p><label>Date<input id="selectedDate" type="date"></label><button class="primary" onclick="loadSelectedDate()">Open this day</button><button class="secondary full" onclick="goToday()">Go to today</button></div></div>
 <div class="modal" id="weightModal"><div class="box"><button class="x" onclick="closeModals()">×</button><h2>Log today's weight</h2><label>Weight kg<input id="newWeight" type="number" step=".1" value="68"></label><button class="primary" onclick="saveWeight()">Save</button></div></div>
 
 <div class="modal" id="measureModal"><div class="box"><button class="x" onclick="closeModals()">×</button><h2>Body measurements</h2><label>Weight kg<input id="measureWeight" type="number" step=".1" value="68"></label><label>Belly cm<input id="measureBelly" type="number" step=".1" value="97"></label><label>Under-waist cm<input id="measureWaist" type="number" step=".1" value="90"></label><label>Chest cm<input id="measureChest" type="number" step=".1" value="100"></label><label>Biceps cm<input id="measureBiceps" type="number" step=".1" value="30"></label><button class="primary" onclick="saveMeasurement()">Save</button></div></div>
@@ -114,6 +117,6 @@
 <div class="modal" id="portionConfirmModal"><div class="box"><button class="x" onclick="closeModals()">×</button><h2>Confirm nutrition</h2><div id="webFoodInfo"></div><label>Amount<input id="webAmount" type="number" min="1" value="100"></label><button class="primary" onclick="addWebFood()">Add to today's meal</button></div></div>
 <div id="toast" class="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js?v=4.1"></script>
-<script src="app.js?v=4.1"></script>
+<script src="supabase.js"></script>
+<script src="app.js"></script>
 </body></html>
