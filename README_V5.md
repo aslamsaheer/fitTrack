@@ -31,3 +31,7 @@ Run `supabase_v5_2_migration.sql` once. It adds optional starting waist, belly, 
 
 ## V5.4 Persistence fix
 Run `supabase_v5_4_migration.sql` once. It adds `daily_logs.workout_data` so individual exercise counts persist in Supabase. V5.4 uses `daily_logs.log_date` and `meals.daily_log_id` from the actual database schema.
+
+
+## V5.5
+Meal persistence fix: uses only actual `meals` columns, returns the inserted row, and displays the exact Supabase error if the insert is rejected. No database migration required.
