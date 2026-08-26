@@ -50,3 +50,5 @@ create policy "daily own" on daily_logs for all using (auth.uid()=user_id) with 
 create policy "meals own" on meals for all using (auth.uid()=user_id) with check (auth.uid()=user_id);
 create policy "foods own" on foods for all using (auth.uid()=user_id) with check (auth.uid()=user_id);
 create policy "measure own" on body_measurements for all using (auth.uid()=user_id) with check (auth.uid()=user_id);
+-- Day selector support (safe to run after the original schema)
+alter table profiles add column if not exists start_date date default current_date;
