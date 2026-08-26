@@ -58,3 +58,15 @@
 .profile-create-box .gradient-btn{margin-top:13px}
 .profile-privacy{text-align:center;color:#8a97a8;font-size:10px;margin-top:5px}
 @media(max-width:390px){.profile-grid-3{grid-template-columns:1fr}.profile-hero{align-items:flex-start}.profile-hero .create-avatar{width:58px;height:58px;font-size:32px}.profile-hero h2{font-size:22px}}
+
+/* V5.7 workout burn progress */
+.workout-burn-card{background:#fff;border-radius:20px;padding:15px 16px;margin:12px 0 15px;box-shadow:0 3px 16px rgba(17,24,39,.06);border:1px solid #edf0f3}
+.burn-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.burn-head small{display:block;font-size:9px;letter-spacing:.12em;color:#8b95a3;font-weight:800;margin-bottom:4px}
+.burn-head strong{display:block;font-size:27px;line-height:1.05}
+.burn-remaining{font-size:13px;font-weight:800;color:#64748b;background:#f3f4f6;padding:8px 10px;border-radius:12px;white-space:nowrap}
+.burn-bar{height:10px;background:#edf0f2;border-radius:99px;overflow:hidden;margin:13px 0 8px}
+.burn-bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#22c55e,#10b981);transition:width .25s ease}
+.burn-foot{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:#8b95a3}
+.burn-foot b{color:#374151}
+@media(max-width:360px){.burn-head strong{font-size:24px}.burn-remaining{font-size:11px;padding:7px 8px}}

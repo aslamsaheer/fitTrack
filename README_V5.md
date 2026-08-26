@@ -39,3 +39,7 @@ Meal persistence fix: uses only actual `meals` columns, returns the inserted row
 
 ## V5.6
 Fixed the meal persistence path and added explicit Supabase save/update errors and a diagnostic `testMealCloud()` helper. No database migration required.
+
+
+## V5.7
+Removed the obsolete Activity Windows / Save Activity section. Added estimated exercise calorie burn and remaining-target progress at the top of Workout. No database migration required.
