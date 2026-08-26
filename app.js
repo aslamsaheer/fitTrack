@@ -114,7 +114,7 @@ async function loadCloudDay(date){
  day=dl?{id:dl.id,date,cal:dl.calories||0,p:dl.protein||0,f:dl.fat||0,c:dl.carbs||0,steps:dl.steps||0,cycle:dl.cycling_minutes||0,burn:dl.exercise_calories||0,workout,weight:dl.weight_kg||0}:{date,cal:0,p:0,f:0,c:0,steps:0,cycle:0,burn:0,workout:{},weight:0};
  if(dl){
    const {data:ml,error:me}=await sb.from('meals').select('*').eq('profile_id',activeProfile.id).eq('daily_log_id',dl.id).order('created_at');
-   if(me) console.warn('meal load failed',me);
+   if(me){console.error('FITTRACK MEAL LOAD FAILED',me);toast('⚠️ Meals could not be loaded: '+me.message);}
    const grouped={};
    (ml||[]).forEach(x=>{
      const foodKey=x.food_key||x.food_name, key=foodKey+'|'+x.unit;
@@ -279,13 +279,47 @@ async function upsertDaily(){
  day.id=data.id;return data.id;
 }
 async function saveMealCloud(m){
- if(!user||!activeProfile)return;
- const logId=await upsertDaily();if(!logId)return;
- const row={user_id:user.id,profile_id:activeProfile.id,daily_log_id:logId,meal_type:mealTypeForNow(),food_key:m.foodKey||m.name,food_name:m.name,quantity:m.qty,unit:m.unit,calories:m.cal||0,protein:m.p||0,fat:m.f||0,carbs:m.c||0};
- const {data,error}=await sb.from('meals').insert(row).select().single();
- if(error){console.error('meal save failed',error);toast('Meal cloud save failed')}
- else if(m.id==null)m.id=data.id;
- return data;
+ if(!user||!activeProfile){toast('⚠️ Cloud session unavailable');return false}
+ const logId=await upsertDaily();
+ if(!logId){toast('⚠️ Daily log could not be saved');return false}
+
+ const row={
+   user_id:user.id,
+   profile_id:activeProfile.id,
+   daily_log_id:logId,
+   meal_type:mealTypeForNow(),
+   food_key:String(m.foodKey||m.name),
+   food_name:String(m.name),
+   quantity:Number(m.qty)||1,
+   unit:String(m.unit||'count'),
+   calories:Number(m.cal)||0,
+   protein:Number(m.p)||0,
+   fat:Number(m.f)||0,
+   carbs:Number(m.c)||0
+ };
+
+ console.log('FITTRACK meal insert',row);
+ const result=await sb.from('meals').insert(row).select('*').single();
+
+ if(result.error){
+   console.error('FITTRACK MEAL INSERT FAILED',result.error);
+   toast('⚠️ Meal save failed: '+result.error.message);
+   return false;
+ }
+
+ if(m.id==null)m.id=result.data.id;
+ console.log('FITTRACK meal saved',result.data);
+ toast('☁️ '+m.name+' saved');
+ return true;
+}
+async function testMealCloud(){
+ const test={foodKey:'__fittrack_test__',name:'FitTrack test',qty:1,unit:'count',cal:0,p:0,f:0,c:0};
+ const ok=await saveMealCloud(test);
+ if(ok && user&&activeProfile){
+   await sb.from('meals').delete().eq('profile_id',activeProfile.id).eq('food_key','__fittrack_test__');
+   toast('☁️ Meal database test passed');
+ }
+ return ok;
 }
 function mealTypeForNow(){
  const h=new Date().getHours();
@@ -325,13 +359,21 @@ async function addFood(food,qty=1,unit='count'){
    day.cal=meals.reduce((a,x)=>a+x.cal,0);day.p=meals.reduce((a,x)=>a+x.p,0);day.f=meals.reduce((a,x)=>a+x.f,0);day.c=meals.reduce((a,x)=>a+x.c,0);
    saveLocal();render();
    if(user&&activeProfile&&existing.id){
-     const {error}=await sb.from('meals').update({quantity:existing.qty,calories:existing.cal,protein:existing.p,fat:existing.f,carbs:existing.c}).eq('id',existing.id).eq('profile_id',activeProfile.id);
-     if(error)console.error('meal update failed',error);
+     const {data,error}=await sb.from('meals').update({
+       quantity:existing.qty,calories:existing.cal,protein:existing.p,fat:existing.f,carbs:existing.c
+     }).eq('id',existing.id).eq('profile_id',activeProfile.id).select('*').single();
+     if(error){
+       console.error('FITTRACK MEAL UPDATE FAILED',error);
+       toast('⚠️ Meal update failed: '+error.message);
+     }else{
+       console.log('FITTRACK meal updated',data);
+       toast('☁️ '+existing.name+' updated');
+     }
      await upsertDaily();
    }else{
-     const oldId=existing.id; existing.id=null;
+     // If the previous insert failed, retry the aggregated item as a fresh row.
+     existing.id=null;
      await saveMealCloud(existing);
-     // If there was no DB row, saveMealCloud inserts the whole accumulated item.
    }
  }else{
    meals.push(m);day.cal=meals.reduce((a,x)=>a+x.cal,0);day.p=meals.reduce((a,x)=>a+x.p,0);day.f=meals.reduce((a,x)=>a+x.f,0);day.c=meals.reduce((a,x)=>a+x.c,0);
@@ -345,7 +387,7 @@ function openPortion(key){
  if(f[6]==='weight'||f.unit==='100g'){portionId.value=key;portionTitle.textContent=f[1]||f.name;portionBase.textContent='Enter the amount in grams.';portionWeight.value=100;openModal('portionModal')}
  else addFood(f,1,'count');
 }
-function addByWeight(){const f=foodByKey(portionId.value);const g=Math.max(1,+portionWeight.value||0);closeModals();addFood(f,g,'g')}
+async function addByWeight(){const f=foodByKey(portionId.value);const g=Math.max(1,+portionWeight.value||0);closeModals();await addFood(f,g,'g')}
 async function addCustomFood(){
  const f={food_key:'custom_'+Date.now(),name:customName.value.trim(),calories_100g:+customCal.value||0,protein_100g:+customP.value||0,fat_100g:+customF.value||0,carbs_100g:+customC.value||0,unit:'100g'};
  if(!f.name){toast('Enter a food name');return}

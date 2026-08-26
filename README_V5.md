@@ -35,3 +35,7 @@ Run `supabase_v5_4_migration.sql` once. It adds `daily_logs.workout_data` so ind
 
 ## V5.5
 Meal persistence fix: uses only actual `meals` columns, returns the inserted row, and displays the exact Supabase error if the insert is rejected. No database migration required.
+
+
+## V5.6
+Fixed the meal persistence path and added explicit Supabase save/update errors and a diagnostic `testMealCloud()` helper. No database migration required.
