@@ -544,6 +544,29 @@ function changeExercise(id,d){
  if(id==='cycle')day.cycle=day.workout[id];
  saveLocal();upsertDaily();render()
 }
+function schedule(){
+ const h=new Date().getHours();
+ if(h<11) return [
+  {icon:'🌅',time:'Morning',text:'Protein-rich breakfast and a short strength session if convenient.'},
+  {icon:'🚶',time:'Late morning',text:'Take a short walk and keep hydration steady.'},
+  {icon:'🍛',time:'Lunch',text:'Aim for a balanced meal with a clear protein source.'}
+ ];
+ if(h<15) return [
+  {icon:'🍛',time:'Lunch',text:'Keep the portion aligned with your remaining calorie target.'},
+  {icon:'🚶',time:'Afternoon',text:'A short walk after lunch is a simple activity win.'},
+  {icon:'💪',time:'Later',text:'Complete the recommended strength work if you have time.'}
+ ];
+ if(h<19) return [
+  {icon:'🚴',time:'Evening',text:'25–40 min cycling or brisk walking is a good cardio option.'},
+  {icon:'🍽️',time:'Dinner',text:'Prioritize protein and keep dinner within your remaining calories.'},
+  {icon:'💧',time:'Night',text:'Finish the day hydrated and review your logged activity.'}
+ ];
+ return [
+  {icon:'🌙',time:'Tonight',text:'Keep dinner sensible and avoid adding unnecessary calories.'},
+  {icon:'🚶',time:'After dinner',text:'A gentle walk can help you finish today's activity target.'},
+  {icon:'📋',time:'Before bed',text:'Check that today's meals and exercise are fully logged.'}
+ ];
+}
 function renderWorkout(){
  const rec=recommendedExercises();
  const list=ALL_EXERCISES.map(x=>({id:x[0],name:x[1],unit:x[2],type:x[3],category:x[4],target:exerciseTarget(x[0]),recommended:rec.has(x[0])}));
