@@ -183,15 +183,19 @@ async function loadNamedProfiles(){
  if(profilesList.length) localStorage.setItem('flc_profiles_cache',JSON.stringify(profilesList));
  activeProfile=profilesList.find(p=>p.id===savedId)||null;
 }
-window.openProfileLogin = function(p){
- const profile=profilesList.find(x=>x.id===p.id)||p;
- if(!profile)return;
+window.openProfileLogin = function(profileOrId){
+ const id=typeof profileOrId==='string' ? profileOrId : profileOrId?.id;
+ const profile=profilesList.find(x=>x.id===id) || (typeof profileOrId==='object' ? profileOrId : null);
+ if(!profile){toast('Profile not found');return;}
  window.loginTargetProfile=profile;
+ const gate=document.getElementById('profileGate');
+ if(gate)gate.classList.remove('show');
  document.getElementById('loginProfileName').textContent=profile.name||'Profile';
  document.getElementById('loginAvatar').textContent=profile.avatar||'👤';
  document.getElementById('loginPassword').value='';
- closeModals();openModal('profileLoginModal');
- setTimeout(()=>document.getElementById('loginPassword')?.focus(),50);
+ const modal=document.getElementById('profileLoginModal');
+ if(modal)modal.classList.add('show');
+ setTimeout(()=>document.getElementById('loginPassword')?.focus(),80);
 }
 window.loginSelectedProfile = async function(){
  const p=window.loginTargetProfile;
@@ -213,10 +217,9 @@ window.loginSelectedProfile = async function(){
 function renderProfileCards(containerId,gate=false){
  const box=document.getElementById(containerId);if(!box)return;
  if(!profilesList.length){box.innerHTML='<div class="profile-empty">No profiles available. Check your connection.</div>';return;}
- const cards=profilesList.map(p=>{const payload=JSON.stringify({id:p.id,name:p.name,avatar:p.avatar||'👤'}).replace(/'/g,'&#39;');return `<button type="button" class="profile-bubble" data-profile-login='${payload}'><span class="bubble-avatar">${p.avatar||'👤'}</span><strong>${escapeHtml(p.name||'Profile')}</strong></button>`;}).join('');
- const add=`<button class="profile-bubble add-profile-bubble" onclick="showCreateProfile()"><span class="bubble-avatar">＋</span><strong>Add New</strong></button>`;
+ const cards=profilesList.map(p=>{const id=String(p.id).replace(/\\/g,"\\\\").replace(/'/g,"\\'");return `<button type="button" class="profile-bubble" onclick="openProfileLogin('${id}')"><span class="bubble-avatar">${p.avatar||'👤'}</span><strong>${escapeHtml(p.name||'Profile')}</strong></button>`;}).join('');
+ const add=`<button type="button" class="profile-bubble add-profile-bubble" onclick="showCreateProfile()"><span class="bubble-avatar">＋</span><strong>Add New</strong></button>`;
  box.innerHTML=cards+add;
- box.querySelectorAll('[data-profile-login]').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();try{openProfileLogin(JSON.parse(btn.getAttribute('data-profile-login')))}catch(err){console.error('PROFILE LOGIN CLICK FAILED',err);toast('Could not open profile');}}));
 }
 function profileNumber(id){
  const v=document.getElementById(id)?.value.trim();
