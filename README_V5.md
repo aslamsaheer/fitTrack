@@ -55,10 +55,10 @@ Legacy profiles created before V5.10 receive a temporary password equal to the p
 
 V5.10: meal inserts now use the `save_meal` Supabase RPC so food entries reliably persist for the password-selected profile/session. Run `supabase_v5_12_migration.sql` once.
 
-## V5.12.1
-Meal persistence now uses a direct authenticated insert first (matching the verified database path), with RPC fallback. Daily totals are persisted after meal save. Visible app version/cache updated to v5.12. No new SQL migration required.
+## V5.12.2
+Meal persistence now uses a direct authenticated insert first (matching the verified database path), with RPC fallback. Daily totals are persisted after meal save. Visible app version/cache updated to v5.12.2. No new SQL migration required.
 
 
 V5.12 fixes the missing schedule() runtime error that could stop addFood() before cloud meal persistence, and includes the complete profile-login RPC setup plus meal persistence RPC in one migration.
 
-V5.12.1: Fixed a JavaScript syntax error in the workout schedule text that prevented app.js from loading, which made all inline buttons appear non-functional. Bumped the service-worker cache key.
+V5.12.2: Fixed a JavaScript syntax error in the workout schedule text that prevented app.js from loading, which made all inline buttons appear non-functional. Bumped the service-worker cache key.

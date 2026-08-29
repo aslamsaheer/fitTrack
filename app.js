@@ -22,6 +22,7 @@ const workoutWindowText=document.getElementById("workoutWindowText");
 const nextActivity=document.getElementById("nextActivity");
 const workoutQuick=document.getElementById("workoutQuick");
 const dayLabel=document.getElementById("dayLabel");
+const dateLabel=document.getElementById("dateLabel");
 const calUsed=document.getElementById("calUsed");
 const calTarget=document.getElementById("calTarget");
 const proteinUsed=document.getElementById("proteinUsed");
