@@ -62,3 +62,7 @@ Meal persistence now uses a direct authenticated insert first (matching the veri
 V5.12 fixes the missing schedule() runtime error that could stop addFood() before cloud meal persistence, and includes the complete profile-login RPC setup plus meal persistence RPC in one migration.
 
 V5.12.2: Fixed a JavaScript syntax error in the workout schedule text that prevented app.js from loading, which made all inline buttons appear non-functional. Bumped the service-worker cache key.
+
+
+## V5.13
+Profile-scoped daily log fix. The old `daily_logs_user_id_log_date_key` constraint was incompatible with multiple named profiles sharing the same anonymous Supabase session. V5.13 drops that constraint and adds a unique index on `profile_id, log_date`, matching the app's daily-log upsert. The profile login function also explicitly calls `extensions.digest()` because pgcrypto is installed in the `extensions` schema. Run `supabase_v5_13_migration.sql` once. No existing profile, meal, workout, or history rows are deleted.
