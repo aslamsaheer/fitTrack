@@ -183,7 +183,7 @@ async function loadNamedProfiles(){
  if(profilesList.length) localStorage.setItem('flc_profiles_cache',JSON.stringify(profilesList));
  activeProfile=profilesList.find(p=>p.id===savedId)||null;
 }
-function openProfileLogin(p){
+window.openProfileLogin = function(p){
  const profile=profilesList.find(x=>x.id===p.id)||p;
  if(!profile)return;
  window.loginTargetProfile=profile;
@@ -193,7 +193,7 @@ function openProfileLogin(p){
  closeModals();openModal('profileLoginModal');
  setTimeout(()=>document.getElementById('loginPassword')?.focus(),50);
 }
-async function loginSelectedProfile(){
+window.loginSelectedProfile = async function(){
  const p=window.loginTargetProfile;
  const pw=document.getElementById('loginPassword').value;
  if(!p)return;
@@ -213,9 +213,10 @@ async function loginSelectedProfile(){
 function renderProfileCards(containerId,gate=false){
  const box=document.getElementById(containerId);if(!box)return;
  if(!profilesList.length){box.innerHTML='<div class="profile-empty">No profiles available. Check your connection.</div>';return;}
- const cards=profilesList.map(p=>`<button class="profile-bubble" onclick="openProfileLogin(${JSON.stringify({id:p.id,name:p.name,avatar:p.avatar||'👤'})})"><span class="bubble-avatar">${p.avatar||'👤'}</span><strong>${escapeHtml(p.name||'Profile')}</strong></button>`).join('');
+ const cards=profilesList.map(p=>{const payload=JSON.stringify({id:p.id,name:p.name,avatar:p.avatar||'👤'}).replace(/'/g,'&#39;');return `<button type="button" class="profile-bubble" data-profile-login='${payload}'><span class="bubble-avatar">${p.avatar||'👤'}</span><strong>${escapeHtml(p.name||'Profile')}</strong></button>`;}).join('');
  const add=`<button class="profile-bubble add-profile-bubble" onclick="showCreateProfile()"><span class="bubble-avatar">＋</span><strong>Add New</strong></button>`;
  box.innerHTML=cards+add;
+ box.querySelectorAll('[data-profile-login]').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();try{openProfileLogin(JSON.parse(btn.getAttribute('data-profile-login')))}catch(err){console.error('PROFILE LOGIN CLICK FAILED',err);toast('Could not open profile');}}));
 }
 function profileNumber(id){
  const v=document.getElementById(id)?.value.trim();
