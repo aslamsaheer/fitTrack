@@ -79,6 +79,7 @@ let selectedDate=today();
 let day={date:selectedDate,cal:0,p:0,f:0,c:0,steps:0,cycle:0,burn:0,workout:{}};
 let meals=[];let dailyHistory=[];let savedFoods=[];let webPending=null;let user=null;
 
+async function sha256(text){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
 function today(){return new Date().toISOString().slice(0,10)}
 function win(){const h=new Date().getHours();return h<11?'morning':h<15?'lunch':h<19?'evening':'dinner'}
 function saveLocal(){
@@ -168,56 +169,52 @@ function showCreateProfile(){
 function pickAvatar(a){selectedAvatar=a;const p=document.getElementById('newAvatarPreview');if(p)p.textContent=a;document.querySelectorAll('.avatarChoices button').forEach(b=>b.classList.toggle('selected',b.textContent===a))}
 async function loadNamedProfiles(){
  const savedId=localStorage.getItem('flc_active_profile');
-
- // Keep the profile picker usable even when the anonymous auth session
- // is temporarily unavailable. Profiles are cached only on this device.
- let cloudProfiles=null;
- if(user){
-   const {data,error}=await sb.from('app_profiles').select('*').eq('owner_id',user.id).order('created_at');
-   if(error){
-     console.warn('Profile list load failed; using device cache',error);
-   }else{
-     cloudProfiles=data||[];
-   }
+ let cloudProfiles=[];
+ try{
+   const {data,error}=await sb.rpc('list_login_profiles');
+   if(error) throw error;
+   cloudProfiles=data||[];
+ }catch(error){
+   console.warn('Profile list load failed; using device cache',error);
+   try{const cached=JSON.parse(localStorage.getItem('flc_profiles_cache'));if(Array.isArray(cached)) cloudProfiles=cached;}catch{}
  }
-
- if(cloudProfiles!==null){
-   profilesList=cloudProfiles;
-
-   // Recover the last selected profile directly when the owner-scoped list
-   // is temporarily empty (for example after an anonymous-session refresh).
-   if(!profilesList.length && savedId){
-     const {data:single,error:singleError}=await sb.from('app_profiles').select('*').eq('id',savedId).maybeSingle();
-     if(!singleError && single) profilesList=[single];
-   }
-
-   // If this browser already knows a profile but the anonymous session
-   // has not restored it yet, retain the cached profile picker.
-   if(!profilesList.length){
-     try{
-       const cached=JSON.parse(localStorage.getItem('flc_profiles_cache'));
-       if(Array.isArray(cached)&&cached.length) profilesList=cached;
-     }catch{}
-   }
- }else if(!profilesList.length){
-   try{
-     const cached=JSON.parse(localStorage.getItem('flc_profiles_cache'));
-     if(Array.isArray(cached)) profilesList=cached;
-   }catch{}
- }
-
+ profilesList=cloudProfiles;
  if(profilesList.length) localStorage.setItem('flc_profiles_cache',JSON.stringify(profilesList));
  activeProfile=profilesList.find(p=>p.id===savedId)||null;
 }
+function openProfileLogin(p){
+ const profile=profilesList.find(x=>x.id===p.id)||p;
+ if(!profile)return;
+ window.loginTargetProfile=profile;
+ document.getElementById('loginProfileName').textContent=profile.name||'Profile';
+ document.getElementById('loginAvatar').textContent=profile.avatar||'👤';
+ document.getElementById('loginPassword').value='';
+ closeModals();openModal('profileLoginModal');
+ setTimeout(()=>document.getElementById('loginPassword')?.focus(),50);
+}
+async function loginSelectedProfile(){
+ const p=window.loginTargetProfile;
+ const pw=document.getElementById('loginPassword').value;
+ if(!p)return;
+ if(pw.length<4){toast('Password must be at least 4 characters');return}
+ if(!user){const r=await sb.auth.signInAnonymously();if(r.error){toast('Cloud connection unavailable');return}user=r.data.user}
+ const {data,error}=await sb.rpc('login_profile',{p_profile_id:p.id,p_password:pw});
+ if(error){toast(error.message||'Incorrect password');return}
+ activeProfile=data;
+ profilesList=profilesList.map(x=>x.id===data.id?data:x);
+ localStorage.setItem('flc_active_profile',data.id);
+ localStorage.setItem('flc_profiles_cache',JSON.stringify(profilesList));
+ closeModals();hideProfileGate();
+ profile={...profile,age:data.age||29,height:data.height_cm||159,weight:data.starting_weight_kg||68,activity:1.35,deficit:400,targets:{cal:data.calorie_target||1700,p:data.protein_target||120,f:data.fat_target||55,c:data.carb_target||185}};
+ startDate=data.start_date||today();selectedDate=today();day={date:selectedDate,cal:0,p:0,f:0,c:0,steps:0,cycle:0,burn:0,workout:{}};meals=[];dailyHistory=[];
+ await loadCloud();saveLocal();render();toast('Welcome back, '+data.name+' 👋');
+}
 function renderProfileCards(containerId,gate=false){
  const box=document.getElementById(containerId);if(!box)return;
- if(!profilesList.length){
-   box.innerHTML=gate
-     ? '<div class="profile-empty">No saved profiles found on this device yet.</div>'
-     : '<div class="profile-empty">No profiles found.</div>';
-   return;
- }
- box.innerHTML=profilesList.map(p=>`<div class="profile-card-wrap"><button class="profile-card ${activeProfile?.id===p.id?'active':''}" onclick="switchProfile('${p.id}')"><span class="avatar">${p.avatar||'👤'}</span><span class="pcopy"><strong>${escapeHtml(p.name)}</strong><small>${p.starting_weight_kg||'—'} kg · ${activeProfile?.id===p.id?'Active profile':'Tap to switch'}</small></span><span class="chev">›</span></button><button class="profile-edit-btn" onclick="event.stopPropagation();editProfile('${p.id}')">✎</button></div>`).join('');
+ if(!profilesList.length){box.innerHTML='<div class="profile-empty">No profiles available. Check your connection.</div>';return;}
+ const cards=profilesList.map(p=>`<button class="profile-bubble" onclick="openProfileLogin(${JSON.stringify({id:p.id,name:p.name,avatar:p.avatar||'👤'})})"><span class="bubble-avatar">${p.avatar||'👤'}</span><strong>${escapeHtml(p.name||'Profile')}</strong></button>`).join('');
+ const add=`<button class="profile-bubble add-profile-bubble" onclick="showCreateProfile()"><span class="bubble-avatar">＋</span><strong>Add New</strong></button>`;
+ box.innerHTML=cards+add;
 }
 function profileNumber(id){
  const v=document.getElementById(id)?.value.trim();
@@ -225,18 +222,21 @@ function profileNumber(id){
 }
 function resetCreateProfileForm(){
  document.getElementById('profileName').value='';
+ document.getElementById('profilePassword').value='';
  ['newAge','newHeight','newWeightProfile','newWaist','newBelly','newChest','newBiceps'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
  selectedAvatar='👨🏻';pickAvatar(selectedAvatar);
 }
 async function createNamedProfile(){
  const name=document.getElementById('profileName').value.trim();
+ const password=document.getElementById('profilePassword').value;
  const age=profileNumber('newAge'), height=profileNumber('newHeight'), weight=profileNumber('newWeightProfile');
  if(!name){toast('Enter your name');return}
+ if(password.length<4){toast('Password must be at least 4 characters');return}
  if(age===null||height===null||weight===null){toast('Enter age, height and starting weight');return}
  if(!user){toast('Cloud connection unavailable');return}
  const id=crypto.randomUUID();
  const waist=profileNumber('newWaist'), belly=profileNumber('newBelly'), chest=profileNumber('newChest'), biceps=profileNumber('newBiceps');
- const row={id,owner_id:user.id,name,avatar:selectedAvatar,age,height_cm:height,starting_weight_kg:weight,start_date:today(),calorie_target:1700,protein_target:120,fat_target:55,carb_target:185,starting_waist_cm:waist,starting_belly_cm:belly,starting_chest_cm:chest,starting_biceps_cm:biceps};
+ const salt=crypto.randomUUID().replaceAll('-',''); const password_hash=await sha256(password.toLowerCase()+salt); const row={id,owner_id:user.id,name,avatar:selectedAvatar,password_salt:salt,password_hash,age,height_cm:height,starting_weight_kg:weight,start_date:today(),calorie_target:1700,protein_target:120,fat_target:55,carb_target:185,starting_waist_cm:waist,starting_belly_cm:belly,starting_chest_cm:chest,starting_biceps_cm:biceps};
  const {data,error}=await sb.from('app_profiles').insert(row).select().single();
  if(error){toast(error.message);return}
  profilesList.push(data);activeProfile=data;localStorage.setItem('flc_active_profile',data.id);

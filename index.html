@@ -125,6 +125,21 @@
   </div>
 </div>
 
+<div class="modal" id="profileLoginModal">
+  <div class="profile-box login-box">
+    <button class="x" onclick="closeModals()">×</button>
+    <div class="create-avatar" id="loginAvatar">👤</div>
+    <div class="eyebrow">WELCOME BACK</div>
+    <h2 id="loginProfileName">Profile</h2>
+    <p>Enter your password to continue.</p>
+    <label class="field-label">Password
+      <div class="input-icon-wrap"><span>🔒</span><input id="loginPassword" type="password" maxlength="64" placeholder="Password" autocomplete="current-password"></div>
+    </label>
+    <button class="gradient-btn" onclick="loginSelectedProfile()">Login <span>→</span></button>
+    <button class="text-btn" onclick="closeModals()">Cancel</button>
+  </div>
+</div>
+
 <div class="modal" id="createProfileModal">
   <div class="profile-box profile-create-box">
     <button class="x" onclick="closeModals()">×</button>
@@ -140,6 +155,10 @@
     <div class="profile-form-section">
       <label class="field-label">Your name
         <div class="input-icon-wrap"><span>♙</span><input id="profileName" maxlength="30" placeholder="e.g. John" autocomplete="name"></div>
+      </label>
+
+      <label class="field-label">Password
+        <div class="input-icon-wrap"><span>🔒</span><input id="profilePassword" type="password" minlength="4" maxlength="64" placeholder="Create a password" autocomplete="new-password"></div>
       </label>
 
       <div class="field-label">Choose avatar
