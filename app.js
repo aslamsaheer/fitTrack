@@ -563,8 +563,8 @@ function schedule(){
  ];
  return [
   {icon:'🌙',time:'Tonight',text:'Keep dinner sensible and avoid adding unnecessary calories.'},
-  {icon:'🚶',time:'After dinner',text:'A gentle walk can help you finish today's activity target.'},
-  {icon:'📋',time:'Before bed',text:'Check that today's meals and exercise are fully logged.'}
+  {icon:'🚶',time:'After dinner',text:"A gentle walk can help you finish today's activity target."},
+  {icon:'📋',time:'Before bed',text:"Check that today's meals and exercise are fully logged."}
  ];
 }
 function renderWorkout(){
