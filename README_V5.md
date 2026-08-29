@@ -54,3 +54,6 @@ Legacy profiles created before V5.10 receive a temporary password equal to the p
 
 
 V5.10: meal inserts now use the `save_meal` Supabase RPC so food entries reliably persist for the password-selected profile/session. Run `supabase_v5_10_migration.sql` once.
+
+## V5.11
+Meal persistence now uses a direct authenticated insert first (matching the verified database path), with RPC fallback. Daily totals are persisted after meal save. Visible app version/cache updated to v5.11. No new SQL migration required.

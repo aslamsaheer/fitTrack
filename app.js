@@ -356,31 +356,37 @@ async function saveMealCloud(m){
  };
 
  console.log('FITTRACK meal save',row);
- // Use a SECURITY DEFINER RPC so meal persistence is independent of the
- // current anonymous-session RLS state. The RPC validates the selected
- // profile against auth.uid() before inserting the row.
- const {data,error}=await sb.rpc('save_meal', {
-   p_profile_id: row.profile_id,
-   p_daily_log_id: row.daily_log_id,
-   p_meal_type: row.meal_type,
-   p_food_key: row.food_key,
-   p_food_name: row.food_name,
-   p_quantity: row.quantity,
-   p_unit: row.unit,
-   p_calories: row.calories,
-   p_protein: row.protein,
-   p_fat: row.fat,
-   p_carbs: row.carbs
- });
-
+ // The verified database path is a normal authenticated INSERT. Try it first.
+ // If a deployment has the save_meal RPC installed, use it as a fallback.
+ let data=null, error=null;
+ const direct=await sb.from('meals').insert(row).select('*').single();
+ data=direct.data; error=direct.error;
+ if(error){
+   console.warn('FITTRACK direct meal insert failed; trying RPC',error);
+   const rpc=await sb.rpc('save_meal', {
+     p_profile_id: row.profile_id,
+     p_daily_log_id: row.daily_log_id,
+     p_meal_type: row.meal_type,
+     p_food_key: row.food_key,
+     p_food_name: row.food_name,
+     p_quantity: row.quantity,
+     p_unit: row.unit,
+     p_calories: row.calories,
+     p_protein: row.protein,
+     p_fat: row.fat,
+     p_carbs: row.carbs
+   });
+   data=rpc.data; error=rpc.error;
+ }
  if(error){
    console.error('FITTRACK MEAL SAVE FAILED',error);
-   toast('⚠️ Meal save failed: '+error.message);
+   toast('⚠️ Meal save failed: '+(error.message||'unknown error'));
    return false;
  }
-
  if(m.id==null)m.id=data?.id;
  console.log('FITTRACK meal saved',data);
+ // Recalculate and persist the daily summary only after the meal itself saved.
+ await upsertDaily();
  toast('☁️ '+m.name+' saved');
  return true;
 }
