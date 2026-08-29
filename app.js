@@ -355,17 +355,32 @@ async function saveMealCloud(m){
    carbs:Number(m.c)||0
  };
 
- console.log('FITTRACK meal insert',row);
- const result=await sb.from('meals').insert(row).select('*').single();
+ console.log('FITTRACK meal save',row);
+ // Use a SECURITY DEFINER RPC so meal persistence is independent of the
+ // current anonymous-session RLS state. The RPC validates the selected
+ // profile against auth.uid() before inserting the row.
+ const {data,error}=await sb.rpc('save_meal', {
+   p_profile_id: row.profile_id,
+   p_daily_log_id: row.daily_log_id,
+   p_meal_type: row.meal_type,
+   p_food_key: row.food_key,
+   p_food_name: row.food_name,
+   p_quantity: row.quantity,
+   p_unit: row.unit,
+   p_calories: row.calories,
+   p_protein: row.protein,
+   p_fat: row.fat,
+   p_carbs: row.carbs
+ });
 
- if(result.error){
-   console.error('FITTRACK MEAL INSERT FAILED',result.error);
-   toast('⚠️ Meal save failed: '+result.error.message);
+ if(error){
+   console.error('FITTRACK MEAL SAVE FAILED',error);
+   toast('⚠️ Meal save failed: '+error.message);
    return false;
  }
 
- if(m.id==null)m.id=result.data.id;
- console.log('FITTRACK meal saved',result.data);
+ if(m.id==null)m.id=data?.id;
+ console.log('FITTRACK meal saved',data);
  toast('☁️ '+m.name+' saved');
  return true;
 }
